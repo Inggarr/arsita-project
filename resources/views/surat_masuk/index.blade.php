@@ -84,7 +84,7 @@
                                 <a href="{{ route('surat-masuk.show', $sm->id_surat_masuk) }}" class="btn btn-secondary btn-sm" title="Lihat Detail">
                                     Detail
                                 </a>
-                                @if(in_array($role, ['admin_rektorat', 'staff_tu']) && $sm->status_arsip !== 'diarsipkan')
+                                @if(in_array($role, ['admin_rektorat', 'staff_tu']) && $sm->status_arsip !== 'diarsipkan' && !$sm->asal_disposisi_id)
                                     <a href="{{ route('surat-masuk.edit', $sm->id_surat_masuk) }}" class="btn btn-secondary btn-sm" title="Edit Surat">
                                         <i class="bi bi-pencil"></i>
                                     </a>

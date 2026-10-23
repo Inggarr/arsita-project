@@ -197,10 +197,16 @@
     </div>
 
     <!-- Action Buttons -->
-    <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
-        <a href="{{ route('surat-masuk.edit', $surat->id_surat_masuk) }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #059669; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;">
-            <i class="bi bi-pencil-fill"></i> Edit Data
-        </a>
+    <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        @if(!$surat->asal_disposisi_id)
+            <a href="{{ route('surat-masuk.edit', $surat->id_surat_masuk) }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #059669; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;">
+                <i class="bi bi-pencil-fill"></i> Edit Data
+            </a>
+        @else
+            <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; border-radius: 8px; font-size: 12.5px; font-weight: 600;">
+                <i class="bi bi-lock-fill"></i> Dokumen Resmi Disposisi (Terkunci dari Edit / Hapus)
+            </span>
+        @endif
 
         @if(Auth::user()->isPimpinan() && $surat->status_arsip !== 'diarsipkan')
         <a href="{{ route('disposisi.create', $surat->id_surat_masuk) }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #7c3aed; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;">
@@ -217,12 +223,14 @@
         </form>
         @endif
 
+        @if(!$surat->asal_disposisi_id)
         <form action="{{ route('surat-masuk.destroy', $surat->id_surat_masuk) }}" method="POST" style="display: inline;" onsubmit="return confirm('Yakin hapus surat ini?')">
             @csrf @method('DELETE')
             <button type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
                 <i class="bi bi-trash-fill"></i> Hapus
             </button>
         </form>
+        @endif
     </div>
 </div>
 

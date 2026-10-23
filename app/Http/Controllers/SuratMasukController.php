@@ -110,6 +110,12 @@ class SuratMasukController extends Controller
     public function edit($id)
     {
         $surat = SuratMasuk::findOrFail($id);
+
+        // Surat hasil disposisi tidak boleh diedit oleh unit penerima
+        if ($surat->asal_disposisi_id) {
+            return back()->with('error', 'Surat masuk ini merupakan naskah dinas hasil disposisi atasan dan bersifat resmi sehingga tidak dapat diedit.');
+        }
+
         $kategoriList = KategoriSurat::all();
         $jenisList = JenisSurat::all();
         $unitList = Unit::all();
@@ -120,6 +126,11 @@ class SuratMasukController extends Controller
     public function update(Request $request, $id)
     {
         $surat = SuratMasuk::findOrFail($id);
+
+        // Surat hasil disposisi tidak boleh diedit oleh unit penerima
+        if ($surat->asal_disposisi_id) {
+            return back()->with('error', 'Surat masuk ini merupakan naskah dinas hasil disposisi atasan dan tidak dapat diedit.');
+        }
 
         $request->validate([
             'no_surat_asal' => 'required|string|max:100',
@@ -154,6 +165,12 @@ class SuratMasukController extends Controller
     public function destroy($id)
     {
         $surat = SuratMasuk::findOrFail($id);
+
+        // Surat hasil disposisi tidak boleh dihapus oleh unit penerima
+        if ($surat->asal_disposisi_id) {
+            return back()->with('error', 'Surat masuk ini merupakan dokumen disposisi resmi dari atasan dan tidak dapat dihapus.');
+        }
+
         $surat->delete();
 
         return redirect()->route('surat-masuk.index')->with('success', 'Surat masuk berhasil dihapus.');
