@@ -61,6 +61,20 @@
             $badge_sm_baru = \App\Models\SuratMasuk::where('id_unit', $id_unit)->where('status_arsip', 'belum_ditinjau')->count();
         }
     }
+
+    // Badge Surat Keluar Perlu Revisi untuk Staf Pembuat
+    $badge_sk_revisi = 0;
+    if (in_array($role, ['staff_tu', 'admin_unit', 'admin_rektorat'])) {
+        if ($role === 'admin_rektorat') {
+            $badge_sk_revisi = \App\Models\SuratKeluar::where('status_surat', 'revisi')->count();
+        } else {
+            $badge_sk_revisi = \App\Models\SuratKeluar::where('status_surat', 'revisi')
+                ->where(function($q) use ($id_user, $id_unit) {
+                    $q->where('dibuat_oleh', $id_user)
+                      ->orWhere('id_unit', $id_unit);
+                })->count();
+        }
+    }
 @endphp
 
 <!-- Sidebar Identik Asli Native -->
@@ -96,6 +110,9 @@
             <a href="{{ route('surat-keluar.index') }}" class="menu-item {{ request()->routeIs('surat-keluar.*') ? 'active' : '' }}" title="Surat Keluar">
                 <i class="bi bi-send-fill"></i>
                 <span class="menu-label">Surat Keluar</span>
+                @if($badge_sk_revisi > 0)
+                    <span class="menu-badge" style="background: rgba(220, 38, 38, 0.25); color: #f87171; border-color: rgba(220, 38, 38, 0.5);" title="{{ $badge_sk_revisi }} surat butuh revisi">{{ $badge_sk_revisi }}</span>
+                @endif
             </a>
         @endif
 
@@ -196,7 +213,31 @@
             <div class="page-title">@yield('title', 'Dashboard')</div>
         </div>
 
-        <div class="topbar-right">
+        <div class="topbar-right" style="display: flex; align-items: center; gap: 14px;">
+            <!-- Notifikasi Lonceng Dropdown -->
+            <div class="notif-bell-wrapper" id="notif-wrapper">
+                <button type="button" class="notif-bell-btn" id="notif-toggle-btn" title="Notifikasi Sistem" aria-label="Notifikasi">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="notif-badge-count" id="notif-badge" style="display: none;">0</span>
+                </button>
+                <div class="notif-dropdown" id="notif-dropdown">
+                    <div class="notif-header">
+                        <div class="notif-header-title">
+                            <i class="bi bi-bell"></i> Notifikasi
+                        </div>
+                        <button type="button" class="notif-header-action" id="notif-mark-all-btn">
+                            Tandai semua dibaca
+                        </button>
+                    </div>
+                    <div class="notif-list" id="notif-items-list">
+                        <div class="notif-empty">
+                            <i class="bi bi-bell-slash"></i>
+                            Tidak ada notifikasi baru
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="unit-tag">
                 <i class="bi bi-building"></i>
                 <span>{{ $user_unit }} ({{ $kode_unit }})</span>
@@ -257,6 +298,130 @@
     sidebar.addEventListener('scroll', function() {
         sessionStorage.setItem('arsita_sidebar_scroll_pos', sidebar.scrollTop);
     });
+})();
+
+// Real-time Notifikasi Polling & Dropdown Toggle
+(function() {
+    var toggleBtn = document.getElementById('notif-toggle-btn');
+    var dropdown = document.getElementById('notif-dropdown');
+    var badge = document.getElementById('notif-badge');
+    var itemsList = document.getElementById('notif-items-list');
+    var markAllBtn = document.getElementById('notif-mark-all-btn');
+
+    if (!toggleBtn || !dropdown) return;
+
+    var previousUnreadCount = 0;
+    var isFirstLoad = true;
+
+    // Toggle dropdown
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+
+    // Mark all as read
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            fetch("{{ route('notifikasi.mark-all') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            }).then(function(res) { return res.json(); })
+              .then(function() {
+                  loadNotifications();
+              }).catch(function(err) { console.error(err); });
+        });
+    }
+
+    // Function to render notification items
+    function renderNotifications(data, unreadCount) {
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+
+        if (!data || data.length === 0) {
+            itemsList.innerHTML = '<div class="notif-empty"><i class="bi bi-bell-slash"></i>Tidak ada notifikasi</div>';
+            return;
+        }
+
+        var html = '';
+        data.forEach(function(item) {
+            var iconClass = 'icon-info';
+            var iconBi = 'bi-info-circle-fill';
+
+            if (item.tipe === 'revisi') {
+                iconClass = 'icon-revisi';
+                iconBi = 'bi-exclamation-octagon-fill';
+            } else if (item.tipe === 'success') {
+                iconClass = 'icon-success';
+                iconBi = 'bi-check-circle-fill';
+            }
+
+            var unreadClass = !item.is_read ? 'unread' : '';
+            var readUrl = "{{ url('notifikasi') }}/" + item.id + "/baca";
+
+            html += '<a href="' + readUrl + '" class="notif-item ' + unreadClass + '">';
+            html += '  <div class="notif-item-icon ' + iconClass + '"><i class="bi ' + iconBi + '"></i></div>';
+            html += '  <div class="notif-item-content">';
+            html += '    <div class="notif-item-title">' + escapeHtml(item.judul) + '</div>';
+            html += '    <div class="notif-item-msg">' + escapeHtml(item.pesan) + '</div>';
+            html += '    <small class="notif-item-time"><i class="bi bi-clock"></i> ' + item.waktu + ' · Oleh: ' + escapeHtml(item.pengirim) + '</small>';
+            html += '  </div>';
+            html += '</a>';
+        });
+
+        itemsList.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function loadNotifications() {
+        fetch("{{ route('notifikasi.list') }}", {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(result) {
+            var unreadCount = result.unread_count || 0;
+            renderNotifications(result.data, unreadCount);
+
+            // Jika ada notifikasi revisi baru yang masuk secara real-time saat user sedang online
+            if (!isFirstLoad && unreadCount > previousUnreadCount) {
+                var latest = result.data[0];
+                if (latest && !latest.is_read && typeof arsitaToast === 'function') {
+                    var toastType = latest.tipe === 'revisi' ? 'danger' : (latest.tipe === 'success' ? 'success' : 'info');
+                    arsitaToast(toastType, latest.judul + ': ' + latest.pesan, 7000);
+                }
+            }
+
+            previousUnreadCount = unreadCount;
+            isFirstLoad = false;
+        })
+        .catch(function(err) {
+            console.error('Gagal mengambil notifikasi:', err);
+        });
+    }
+
+    // Load pertama kali
+    loadNotifications();
+
+    // Polling setiap 15 detik agar langsung update tanpa refresh manual
+    setInterval(loadNotifications, 15000);
 })();
 </script>
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DisposisiController;
 use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\PenggunaController;
 use App\Http\Controllers\PersetujuanController;
 use App\Http\Controllers\SuratKeluarController;
@@ -54,6 +55,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PersetujuanController::class, 'index'])->name('index');
         Route::get('/{id}', [PersetujuanController::class, 'show'])->name('show');
         Route::post('/{id}/proses', [PersetujuanController::class, 'proses'])->name('proses');
+    });
+
+    // Notifikasi Sistem & Realtime
+    Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
+        Route::get('/list', [NotifikasiController::class, 'getNotifications'])->name('list');
+        Route::get('/{id}/baca', [NotifikasiController::class, 'readAndRedirect'])->name('read');
+        Route::post('/tandai-semua-dibaca', [NotifikasiController::class, 'markAllAsRead'])->name('mark-all');
     });
 
     // Disposisi

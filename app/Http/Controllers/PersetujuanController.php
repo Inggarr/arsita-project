@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccSuratKeluar;
+use App\Models\Notifikasi;
 use App\Models\SuratKeluar;
 use App\Models\SuratMasuk;
 use App\Services\ArsitaService;
@@ -84,16 +85,31 @@ class PersetujuanController extends Controller
         }
 
         if ($request->aksi === 'tolak') {
+            $catatan = $request->catatan_penolakan ?: 'Revisi diperlukan dari pimpinan.';
             $tahapAktif->update([
                 'status' => 'ditolak',
                 'disetujui_oleh' => $user->id_user,
-                'catatan_penolakan' => $request->catatan_penolakan ?: 'Revisi diperlukan dari pimpinan.',
+                'catatan_penolakan' => $catatan,
                 'tanggal' => now(),
             ]);
 
             $surat->update(['status_surat' => 'revisi']);
 
-            return redirect()->route('persetujuan.index')->with('success', 'Surat ditolak dan dikembalikan ke pembuat untuk revisi.');
+            // Berikan notifikasi langsung ke staf pembuat surat
+            if ($surat->dibuat_oleh) {
+                $pimpinanNama = $user->nama ?: $user->name ?: 'Pimpinan';
+                Notifikasi::create([
+                    'user_id' => $surat->dibuat_oleh,
+                    'sender_id' => $user->id_user,
+                    'judul' => 'Surat Keluar Perlu Revisi',
+                    'pesan' => "Draft surat '{$surat->perihal}' ditolak oleh {$pimpinanNama}. Catatan: {$catatan}",
+                    'url' => route('surat-keluar.show', $surat->id_surat_keluar),
+                    'tipe' => 'revisi',
+                    'is_read' => false,
+                ]);
+            }
+
+            return redirect()->route('persetujuan.index')->with('success', 'Surat ditolak dan notifikasi revisi telah dikirimkan ke pembuat.');
         }
 
         // Jika disetujui
@@ -115,6 +131,19 @@ class PersetujuanController extends Controller
                 (int) date('Y'),
                 $surat->kategori_id
             );
+
+            // Berikan notifikasi sukses ke pembuat surat bahwa surat telah disetujui & nomor resmi terbit
+            if ($surat->dibuat_oleh) {
+                Notifikasi::create([
+                    'user_id' => $surat->dibuat_oleh,
+                    'sender_id' => $user->id_user,
+                    'judul' => 'Surat Keluar Disetujui (ACC)',
+                    'pesan' => "Surat '{$surat->perihal}' telah disetujui penuh. Nomor surat resmi: {$nomorSurat}.",
+                    'url' => route('surat-keluar.show', $surat->id_surat_keluar),
+                    'tipe' => 'success',
+                    'is_read' => false,
+                ]);
+            }
 
             // Jika ditujukan ke unit internal, teruskan otomatis ke Surat Masuk unit tersebut
             if ($surat->tujuan_unit_id) {
