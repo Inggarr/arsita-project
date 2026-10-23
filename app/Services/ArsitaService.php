@@ -6,6 +6,8 @@ use App\Models\FormatNomor;
 use App\Models\JenisSurat;
 use App\Models\NomorSurat;
 use App\Models\Unit;
+use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ArsitaService
@@ -173,5 +175,88 @@ class ArsitaService
             'rektorat' => 3,
             default => 1,
         };
+    }
+
+    /**
+     * Mengambil daftar unit dan individu yang sah sebagai tujuan disposisi
+     * berdasarkan prinsip hierarki (atas ke bawah / eskalasi prodi ke fakultas).
+     *
+     * @param  User  $user  Pengirim disposisi
+     * @return array{units: Collection, users: Collection, catatan_alur: string}
+     */
+    public static function getTujuanDisposisiValid(User $user): array
+    {
+        $unit = $user->unit;
+        $level = $unit?->level ?? 'rektorat';
+
+        $validUnits = collect();
+        $catatanAlur = '';
+
+        if ($user->isAdminRektorat() || $level === 'rektorat') {
+            // Rektorat dapat mendisposisikan ke semua unit bawahan (Fakultas dan Prodi)
+            $validUnits = Unit::where('status', 'aktif')
+                ->where('id_unit', '!=', $user->id_unit)
+                ->orderBy('level', 'asc')
+                ->orderBy('nama_unit', 'asc')
+                ->get();
+            $catatanAlur = 'Tingkat Rektorat: Disposisi dapat ditujukan ke seluruh Fakultas dan Program Studi di bawah naungan universitas, atau pejabat/staf rektorat.';
+        } elseif ($level === 'fakultas') {
+            // Fakultas mendisposisikan ke prodi-prodi di bawah naungannya
+            $validUnits = Unit::where('status', 'aktif')
+                ->where('id_parent', $user->id_unit)
+                ->orderBy('nama_unit', 'asc')
+                ->get();
+            $catatanAlur = 'Tingkat Fakultas: Disposisi ditujukan ke Program Studi / Jurusan di bawah naungan fakultas ini, atau individu internal fakultas.';
+        } elseif ($level === 'prodi') {
+            // Prodi TIDAK DAPAT disposisi langsung ke prodi lain (horizontal).
+            // Alurnya: prodi mengajukan/mendisposisikan ke Fakultas (unit induk/parent) terlebih dahulu.
+            if ($unit && $unit->id_parent) {
+                $validUnits = Unit::where('status', 'aktif')
+                    ->where('id_unit', $unit->id_parent)
+                    ->get();
+                $catatanAlur = 'Tingkat Program Studi: Sesuai tata kelola persuratan, disposisi antar-prodi wajib diajukan melalui Fakultas ('.($unit->parent?->nama_unit ?? 'Fakultas Induk').'). Fakultas yang akan meneruskan instruksi ke prodi tujuan.';
+            } else {
+                $validUnits = collect();
+                $catatanAlur = 'Tingkat Program Studi: Disposisi internal prodi dapat ditujukan ke staf/dosen internal.';
+            }
+        }
+
+        // Daftar individu: prioritaskan staf/anggota di unit sendiri, plus pimpinan di unit tujuan jika ada
+        $validUsersQuery = User::where('status', 'aktif')
+            ->where('id_user', '!=', $user->id_user);
+
+        if ($level === 'prodi') {
+            // Individu prodi sendiri + pimpinan fakultas induknya
+            $validUsersQuery->where(function ($q) use ($user, $unit) {
+                $q->where('id_unit', $user->id_unit);
+                if ($unit && $unit->id_parent) {
+                    $q->orWhere(function ($sub) use ($unit) {
+                        $sub->where('id_unit', $unit->id_parent)
+                            ->whereHas('role', function ($r) {
+                                $r->whereIn('nama_role', ['pimpinan', 'staff_tu']);
+                            });
+                    });
+                }
+            });
+        } elseif ($level === 'fakultas') {
+            // Individu internal fakultas + pimpinan prodi-prodi bawahannya
+            $childUnitIds = $validUnits->pluck('id_unit')->toArray();
+            $validUsersQuery->where(function ($q) use ($user, $childUnitIds) {
+                $q->where('id_unit', $user->id_unit)
+                    ->orWhereIn('id_unit', $childUnitIds);
+            });
+        }
+
+        $validUsers = $validUsersQuery->with(['unit', 'role'])
+            ->orderBy('id_unit', 'asc')
+            ->orderBy('nama', 'asc')
+            ->get();
+
+        return [
+            'units' => $validUnits,
+            'users' => $validUsers,
+            'catatan_alur' => $catatanAlur,
+            'level_pengirim' => $level,
+        ];
     }
 }

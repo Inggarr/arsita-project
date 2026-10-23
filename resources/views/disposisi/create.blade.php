@@ -7,9 +7,23 @@
     <h1 style="font-size: 22px; font-weight: 700; color: #0f172a; margin: 8px 0 0 0;">Buat Disposisi Elektronik</h1>
 </div>
 
-<div style="padding: 14px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+<div style="padding: 14px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
     <strong>Surat yang didisposisikan:</strong> {{ $surat->perihal }} ({{ $surat->no_surat_asal }}) — dari {{ $surat->asal_surat }}
 </div>
+
+@if(!empty($catatanAlur))
+<div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-left: 4px solid #7c3aed; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: flex-start; gap: 10px;">
+        <i class="bi bi-diagram-3-fill" style="font-size: 18px; color: #7c3aed; margin-top: 1px;"></i>
+        <div>
+            <div style="font-size: 13px; font-weight: 700; color: #0f172a;">Prinsip Hierarki Disposisi:</div>
+            <div style="font-size: 12.5px; color: #475569; margin-top: 3px; line-height: 1.5;">
+                {{ $catatanAlur }}
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px;">
 <form action="{{ route('disposisi.store') }}" method="POST">
@@ -23,16 +37,16 @@
 
 <div style="margin-bottom: 18px;">
     <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Instruksi Disposisi *</label>
-    <textarea name="instruksi" rows="4" required placeholder="Mohon ditindaklanjuti sesuai prosedur..." style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: vertical;">{{ old('instruksi') }}</textarea>
+    <textarea name="instruksi" rows="4" required placeholder="Mohon ditindaklanjuti sesuai prosedur atau dikoordinasikan..." style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: vertical;">{{ old('instruksi') }}</textarea>
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px;">
     <div>
         <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Sifat Disposisi *</label>
         <select name="sifat" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
-            <option value="biasa">Biasa</option>
-            <option value="segera">Segera</option>
-            <option value="sangat_segera">Sangat Segera</option>
+            <option value="biasa" {{ old('sifat') === 'biasa' ? 'selected' : '' }}>Biasa</option>
+            <option value="segera" {{ old('sifat') === 'segera' ? 'selected' : '' }}>Segera</option>
+            <option value="sangat_segera" {{ old('sifat') === 'sangat_segera' ? 'selected' : '' }}>Sangat Segera</option>
         </select>
     </div>
     <div>
@@ -42,34 +56,50 @@
 </div>
 
 <div style="margin-bottom: 18px;">
-    <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">Jenis Penerima *</label>
+    <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">Pilih Jenis Penerima Disposisi *</label>
     <div style="display: flex; gap: 16px; margin-bottom: 12px;">
         <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer;">
-            <input type="radio" name="tujuan_tipe" value="individu" {{ old('tujuan_tipe', 'individu') === 'individu' ? 'checked' : '' }} onchange="toggleTujuan(this.value)"> Individu
+            <input type="radio" name="tujuan_tipe" value="individu" {{ old('tujuan_tipe', 'individu') === 'individu' ? 'checked' : '' }} onchange="toggleTujuan(this.value)"> Individu / Pegawai
         </label>
         <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer;">
-            <input type="radio" name="tujuan_tipe" value="unit" {{ old('tujuan_tipe') === 'unit' ? 'checked' : '' }} onchange="toggleTujuan(this.value)"> Unit
+            <input type="radio" name="tujuan_tipe" value="unit" {{ old('tujuan_tipe') === 'unit' ? 'checked' : '' }} onchange="toggleTujuan(this.value)"> Unit / Lembaga
         </label>
     </div>
 
     <div id="field-individu">
-        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Pilih Pengguna *</label>
+        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Pilih Pengguna / Pegawai *</label>
         <select name="ke_user_id" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
             <option value="">— Pilih Pengguna —</option>
             @foreach($userList as $u)
-                <option value="{{ $u->id_user }}" {{ old('ke_user_id') == $u->id_user ? 'selected' : '' }}>{{ $u->nama ?: $u->name }} ({{ $u->unit?->kode_unit }})</option>
+                <option value="{{ $u->id_user }}" {{ old('ke_user_id') == $u->id_user ? 'selected' : '' }}>
+                    {{ $u->nama ?: $u->name }} — {{ ucwords(str_replace('_', ' ', $u->role->nama_role ?? 'Pegawai')) }} ({{ $u->unit?->nama_unit ?? '-' }})
+                </option>
             @endforeach
         </select>
+        <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
+            Daftar pengguna disesuaikan dengan lingkup unit kerja dan hierarki atasan Anda.
+        </small>
     </div>
 
     <div id="field-unit" style="display: none;">
-        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Pilih Unit *</label>
+        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Pilih Unit Tujuan *</label>
         <select name="ke_unit_id" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
-            <option value="">— Pilih Unit —</option>
+            <option value="">— Pilih Unit Tujuan —</option>
             @foreach($unitList as $u)
-                <option value="{{ $u->id_unit }}" {{ old('ke_unit_id') == $u->id_unit ? 'selected' : '' }}>{{ $u->nama_unit }}</option>
+                <option value="{{ $u->id_unit }}" {{ old('ke_unit_id') == $u->id_unit ? 'selected' : '' }}>
+                    {{ $u->nama_unit }} (Tingkat: {{ ucfirst($u->level) }})
+                </option>
             @endforeach
         </select>
+        @if($levelPengirim === 'prodi')
+            <div style="margin-top: 6px; padding: 8px 12px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; font-size: 12px; color: #92400e;">
+                <i class="bi bi-info-circle-fill"></i> Sesuai alur struktural, Program Studi menyalurkan disposisi ke <strong>Fakultas</strong> terlebih dahulu sebelum diteruskan ke prodi lain.
+            </div>
+        @else
+            <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
+                Surat masuk baru akan terbuat secara otomatis di unit bawahan yang dipilih.
+            </small>
+        @endif
     </div>
 </div>
 
