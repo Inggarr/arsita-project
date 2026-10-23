@@ -1,0 +1,167 @@
+/* =============================================================
+   ARSITA — Format Cetak Surat Styles
+   Sistem Informasi Persuratan & Disposisi
+   UIN Siber Syekh Nurjati Cirebon (UINSSC)
+   ============================================================= */
+
+@page {
+    size: A4 portrait;
+    margin: 20mm;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Times New Roman', Times, serif;
+    color: #000;
+    background: #e2e8f0;
+    padding: 30px 0;
+    line-height: 1.5;
+}
+
+.page {
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 25mm 25mm 25mm 25mm;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    position: relative;
+}
+
+.no-print {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.btn-print {
+    background: #1e40af;
+    color: #fff;
+    border: 0;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: sans-serif;
+}
+
+.btn-back {
+    background: #64748b;
+    color: #fff;
+    border: 0;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-family: sans-serif;
+    margin-left: 8px;
+}
+
+/* Kop Surat */
+.kop {
+    text-align: center;
+    border-bottom: 3px double #000;
+    padding-bottom: 10px;
+    margin-bottom: 24px;
+}
+
+.kop-kemenag {
+    font-size: 14pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.kop-univ {
+    font-size: 16pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kop-unit {
+    font-size: 13pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.kop-alamat {
+    font-size: 10pt;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Watermark Draft */
+.watermark {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 70pt;
+    font-weight: bold;
+    color: rgba(220, 38, 38, 0.15);
+    text-transform: uppercase;
+    pointer-events: none;
+    border: 8px dashed rgba(220, 38, 38, 0.2);
+    padding: 10px 40px;
+    border-radius: 12px;
+}
+
+/* Konten Surat */
+.meta-surat {
+    width: 100%;
+    margin-bottom: 24px;
+    font-size: 12pt;
+}
+
+.meta-surat td {
+    vertical-align: top;
+    padding: 2px 0;
+}
+
+.isi-surat {
+    font-size: 12pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 40px;
+    white-space: pre-wrap;
+}
+
+.ttd-box {
+    float: right;
+    width: 250px;
+    text-align: left;
+    font-size: 12pt;
+}
+
+.tembusan-box {
+    clear: both;
+    padding-top: 40px;
+    font-size: 10.5pt;
+}
+
+/* Media Cetak / Print */
+@media print {
+    body {
+        background: none;
+        padding: 0;
+    }
+    .page {
+        box-shadow: none;
+        width: auto;
+        min-height: auto;
+        padding: 0;
+        margin: 0;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
