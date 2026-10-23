@@ -215,24 +215,32 @@
 
         <div class="topbar-right" style="display: flex; align-items: center; gap: 14px;">
             <!-- Notifikasi Lonceng Dropdown -->
-            <div class="notif-bell-wrapper" id="notif-wrapper">
-                <button type="button" class="notif-bell-btn" id="notif-toggle-btn" title="Notifikasi Sistem" aria-label="Notifikasi">
+            <div class="notif-bell-wrapper" id="notif-wrapper" style="position: relative; display: inline-flex; align-items: center;">
+                <button type="button" class="notif-bell-btn" id="notif-toggle-btn" title="Notifikasi Sistem" aria-label="Notifikasi" style="position: relative; width: 40px; height: 40px; border-radius: 10px; background: #f8fafc; border: 1.5px solid #e2e8f0; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; cursor: pointer; transition: all 0.2s ease; outline: none; padding: 0;">
                     <i class="bi bi-bell-fill"></i>
-                    <span class="notif-badge-count" id="notif-badge" style="display: none;">0</span>
+                    <span class="notif-badge-count" id="notif-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #dc2626; color: #ffffff; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9999px; align-items: center; justify-content: center; border: 2px solid #ffffff; line-height: 1; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4); z-index: 2;">0</span>
                 </button>
-                <div class="notif-dropdown" id="notif-dropdown">
-                    <div class="notif-header">
-                        <div class="notif-header-title">
-                            <i class="bi bi-bell"></i> Notifikasi
+
+                <!-- Panel Dropdown Notifikasi -->
+                <div class="notif-dropdown" id="notif-dropdown" style="display: none; position: absolute; top: calc(100% + 10px); right: 0; width: 380px; max-width: calc(100vw - 32px); background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.16), 0 8px 16px -6px rgba(15, 23, 42, 0.08); z-index: 9999; flex-direction: column; overflow: hidden;">
+                    <!-- Header -->
+                    <div class="notif-header" style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-bottom: 1px solid #e2e8f0;">
+                        <div class="notif-header-title" style="font-size: 13.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <i class="bi bi-bell" style="font-size: 16px; color: #1e40af;"></i> Notifikasi
                         </div>
-                        <button type="button" class="notif-header-action" id="notif-mark-all-btn">
-                            Tandai semua dibaca
+                        <button type="button" class="notif-header-action" id="notif-mark-all-btn" style="font-size: 11.5px; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; font-weight: 600; padding: 4px 10px; transition: all 0.15s ease; white-space: nowrap;">
+                            <i class="bi bi-check2-all"></i> Tandai semua dibaca
                         </button>
                     </div>
-                    <div class="notif-list" id="notif-items-list">
-                        <div class="notif-empty">
-                            <i class="bi bi-bell-slash"></i>
-                            Tidak ada notifikasi baru
+
+                    <!-- List Notifikasi -->
+                    <div class="notif-list" id="notif-items-list" style="max-height: 390px; overflow-y: auto; display: flex; flex-direction: column; background: #ffffff;">
+                        <div class="notif-empty" style="padding: 36px 20px; text-align: center; color: #94a3b8; font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: #f8fafc; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #cbd5e1; margin-bottom: 4px;">
+                                <i class="bi bi-bell-slash"></i>
+                            </div>
+                            <div style="font-weight: 600; color: #64748b;">Tidak ada notifikasi baru</div>
+                            <div style="font-size: 11.5px; color: #94a3b8;">Notifikasi revisi atau update naskah dinas akan muncul di sini</div>
                         </div>
                     </div>
                 </div>
@@ -316,11 +324,19 @@
     // Toggle dropdown
     toggleBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        dropdown.classList.toggle('show');
+        var isOpen = dropdown.style.display === 'flex' || dropdown.classList.contains('show');
+        if (isOpen) {
+            dropdown.style.display = 'none';
+            dropdown.classList.remove('show');
+        } else {
+            dropdown.style.display = 'flex';
+            dropdown.classList.add('show');
+        }
     });
 
     document.addEventListener('click', function(e) {
         if (!dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+            dropdown.style.display = 'none';
             dropdown.classList.remove('show');
         }
     });

@@ -257,175 +257,231 @@
     border-color: #15803d;
 }
 
-/* ─────────────────────────────────────────
-   NOTIFIKASI BELL & DROPDOWN (TOPBAR)
-───────────────────────────────────────── */
+/* ═══════════════════════════════════════════════
+   NOTIFIKASI BELL & DROPDOWN — ARSITA
+   Lonceng topbar + dropdown notifikasi profesional
+   ═══════════════════════════════════════════════ */
+
+/* Wrapper lonceng */
 .notif-bell-wrapper {
     position: relative;
     display: inline-flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
+/* Tombol lonceng */
 .notif-bell-btn {
     position: relative;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-md);
-    background: var(--bg-main);
+    background: var(--bg-app);
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
+    color: var(--text-secondary);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 17px;
+    font-size: 16px;
     cursor: pointer;
     transition: var(--transition-base);
+    outline: none;
+    padding: 0;
 }
 
 .notif-bell-btn:hover {
-    background: #e2e8f0;
+    background: var(--primary-subtle);
+    border-color: var(--primary-border);
     color: var(--primary);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.12);
 }
 
+.notif-bell-btn:focus-visible {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
+/* Badge angka notifikasi belum dibaca */
 .notif-badge-count {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ef4444;
+    top: -5px;
+    right: -5px;
+    background: var(--danger);
     color: #ffffff;
+    font-family: var(--font-base);
     font-size: 10px;
     font-weight: 700;
     min-width: 18px;
     height: 18px;
     padding: 0 4px;
-    border-radius: 9999px;
-    display: inline-flex;
+    border-radius: var(--radius-full);
+    display: none;
     align-items: center;
     justify-content: center;
     border: 2px solid var(--bg-card);
     line-height: 1;
-    animation: notifPulse 2s infinite;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5);
+    animation: notifPulse 2.5s ease-in-out infinite;
+    z-index: 1;
 }
 
 @keyframes notifPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.15); }
-    100% { transform: scale(1); }
+    0%, 100% { transform: scale(1); box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5); }
+    50%  { transform: scale(1.18); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.7); }
 }
 
+/* Panel dropdown */
 .notif-dropdown {
     position: absolute;
-    top: calc(100% + 10px);
+    top: calc(100% + 8px);
     right: 0;
-    width: 360px;
+    width: 380px;
+    max-width: calc(100vw - 32px);
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(0,0,0,0.03);
+    z-index: 9990;
     display: none;
     flex-direction: column;
     overflow: hidden;
-    animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .notif-dropdown.show {
     display: flex;
+    animation: notifDropIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes dropdownFadeIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes notifDropIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Header panel dropdown */
 .notif-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    background: #f8fafc;
+    padding: 14px 16px 12px;
+    background: linear-gradient(135deg, var(--primary-subtle) 0%, #f8fafc 100%);
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .notif-header-title {
-    font-size: 13.5px;
+    font-size: var(--text-md);
     font-weight: 700;
     color: var(--text-primary);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
+.notif-header-title i {
+    font-size: 15px;
+    color: var(--primary);
+}
+
+/* Tombol "tandai semua dibaca" */
 .notif-header-action {
+    font-family: var(--font-base);
     font-size: 11.5px;
-    color: #2563eb;
-    background: none;
-    border: none;
+    color: var(--primary);
+    background: var(--primary-subtle);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    transition: var(--transition-fast);
+    white-space: nowrap;
 }
 
 .notif-header-action:hover {
-    background: #eff6ff;
-    text-decoration: underline;
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
 }
 
+/* List scroll area */
 .notif-list {
-    max-height: 380px;
+    max-height: 400px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
 }
 
+.notif-list::-webkit-scrollbar { width: 4px; }
+.notif-list::-webkit-scrollbar-track { background: transparent; }
+.notif-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* Tiap item notifikasi */
 .notif-item {
     display: flex;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 13px 16px;
     border-bottom: 1px solid var(--border-color);
     text-decoration: none;
     color: inherit;
-    transition: background 0.15s ease;
+    transition: background 0.12s ease;
     align-items: flex-start;
+    cursor: pointer;
+}
+
+.notif-item:last-child {
+    border-bottom: none;
 }
 
 .notif-item:hover {
-    background: #f1f5f9;
+    background: var(--bg-hover);
 }
 
+/* Belum dibaca — highlight */
 .notif-item.unread {
-    background: #f8fafc;
-    border-left: 3px solid #ef4444;
+    background: #fefce8;
+    border-left: 3px solid var(--danger);
+    padding-left: 13px;
 }
 
+.notif-item.unread:hover {
+    background: #fef9c3;
+}
+
+/* Ikon bulat */
 .notif-item-icon {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 14px;
+    font-size: 15px;
+    margin-top: 1px;
 }
 
 .notif-item-icon.icon-revisi {
-    background: #fee2e2;
-    color: #dc2626;
+    background: var(--danger-bg);
+    color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
 }
 
 .notif-item-icon.icon-success {
-    background: #dcfce7;
-    color: #16a34a;
+    background: var(--success-bg);
+    color: var(--success);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.08);
 }
 
 .notif-item-icon.icon-info {
-    background: #e0f2fe;
-    color: #0284c7;
+    background: var(--info-bg);
+    color: var(--info);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.08);
 }
 
+/* Konten teks */
 .notif-item-content {
     flex: 1;
     min-width: 0;
@@ -435,34 +491,77 @@
     font-size: 12.5px;
     font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.3;
-    margin-bottom: 2px;
+    line-height: 1.35;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .notif-item-msg {
     font-size: 11.5px;
-    color: #64748b;
-    line-height: 1.4;
+    color: var(--text-secondary);
+    line-height: 1.5;
     word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .notif-item-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-size: 10.5px;
-    color: #94a3b8;
-    margin-top: 4px;
-    display: block;
+    color: var(--text-muted);
+    margin-top: 5px;
+    font-weight: 500;
 }
 
+.notif-item-time i {
+    font-size: 10px;
+}
+
+/* Dot belum dibaca */
+.notif-unread-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--danger);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+/* State kosong */
 .notif-empty {
-    padding: 32px 16px;
+    padding: 40px 24px;
     text-align: center;
-    color: #94a3b8;
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
-.notif-empty i {
-    font-size: 32px;
+.notif-empty-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--bg-app);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
     color: #cbd5e1;
-    display: block;
-    margin-bottom: 8px;
+    border: 2px dashed var(--border-color);
 }
+
+.notif-empty-text {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
