@@ -69,25 +69,40 @@ class DisposisiController extends Controller
             'catatan' => 'nullable|string',
             'tujuan_tipe' => 'required|in:individu,unit',
             'ke_user_id' => 'nullable|required_if:tujuan_tipe,individu|exists:users,id_user',
-            'ke_unit_id' => 'nullable|required_if:tujuan_tipe,unit|exists:units,id_unit',
+            'ke_unit_ids' => 'nullable|required_if:tujuan_tipe,unit|array|min:1',
+            'ke_unit_ids.*' => 'exists:units,id_unit',
+            'ke_unit_id' => 'nullable|exists:units,id_unit',
         ]);
 
         $user = Auth::user();
         $tujuanData = ArsitaService::getTujuanDisposisiValid($user);
 
-        // Validasi Hierarki Struktural:
-        // 1. Jika tujuan UNIT, pastikan unit yang dipilih termasuk dalam unit sah yang diizinkan
+        // Kumpulkan unit target (bisa array ke_unit_ids atau fallback ke_unit_id)
+        $targetUnitIds = [];
         if ($request->tujuan_tipe === 'unit') {
+            if ($request->has('ke_unit_ids') && is_array($request->ke_unit_ids)) {
+                $targetUnitIds = array_map('intval', $request->ke_unit_ids);
+            } elseif ($request->filled('ke_unit_id')) {
+                $targetUnitIds = [(int) $request->ke_unit_id];
+            }
+
+            if (empty($targetUnitIds)) {
+                return back()->withInput()->with('error', 'Pilih minimal satu unit tujuan disposisi.');
+            }
+
+            // Validasi Hierarki Struktural untuk tiap unit tujuan
             $allowedUnitIds = $tujuanData['units']->pluck('id_unit')->toArray();
-            if (! in_array((int) $request->ke_unit_id, $allowedUnitIds, true)) {
-                $targetUnit = Unit::find($request->ke_unit_id);
-                $targetName = $targetUnit ? $targetUnit->nama_unit : 'Unit yang dipilih';
+            foreach ($targetUnitIds as $targetUnitId) {
+                if (! in_array($targetUnitId, $allowedUnitIds, true)) {
+                    $targetUnit = Unit::find($targetUnitId);
+                    $targetName = $targetUnit ? $targetUnit->nama_unit : 'Unit yang dipilih';
 
-                if ($tujuanData['level_pengirim'] === 'prodi') {
-                    return back()->withInput()->with('error', "Pelanggaran Alur Hierarki: Program Studi tidak dapat mendisposisikan surat langsung ke {$targetName}. Sesuai tata tertib, disposisi harus ditujukan ke Fakultas terlebih dahulu.");
+                    if ($tujuanData['level_pengirim'] === 'prodi') {
+                        return back()->withInput()->with('error', "Pelanggaran Alur Hierarki: Program Studi tidak dapat mendisposisikan surat langsung ke {$targetName}. Sesuai tata tertib, disposisi harus ditujukan ke Fakultas terlebih dahulu.");
+                    }
+
+                    return back()->withInput()->with('error', "Unit {$targetName} tidak berada dalam hierarki kewenangan disposisi Anda.");
                 }
-
-                return back()->withInput()->with('error', "Unit {$targetName} tidak berada dalam hierarki kewenangan disposisi Anda.");
             }
         }
 
@@ -109,22 +124,22 @@ class DisposisiController extends Controller
             'tanggal_kirim' => now(),
         ]);
 
-        $disposisiTujuan = DisposisiTujuan::create([
-            'id_disposisi' => $disposisi->id_disposisi,
-            'tujuan_tipe' => $request->tujuan_tipe,
-            'ke_user_id' => $request->tujuan_tipe === 'individu' ? $request->ke_user_id : null,
-            'ke_unit_id' => $request->tujuan_tipe === 'unit' ? $request->ke_unit_id : null,
-            'status' => 'belum_diproses',
-        ]);
-
         // Update status surat masuk asal menjadi didisposisikan
         $suratAsal = SuratMasuk::with('unit')->findOrFail($request->id_surat_masuk);
         $suratAsal->update([
             'status_arsip' => 'didisposisikan',
         ]);
 
-        // Notifikasi ke penerima individu
+        // Jika tujuan INDIVIDU
         if ($request->tujuan_tipe === 'individu' && $request->ke_user_id) {
+            $disposisiTujuan = DisposisiTujuan::create([
+                'id_disposisi' => $disposisi->id_disposisi,
+                'tujuan_tipe' => 'individu',
+                'ke_user_id' => $request->ke_user_id,
+                'ke_unit_id' => null,
+                'status' => 'belum_diproses',
+            ]);
+
             Notifikasi::create([
                 'user_id' => $request->ke_user_id,
                 'sender_id' => $user->id_user,
@@ -136,47 +151,63 @@ class DisposisiController extends Controller
             ]);
         }
 
-        // Logika Berjenjang Antarunit (sesuai alur asli ARSITA Readme 8.1):
-        // Jika tujuan adalah UNIT, otomatis buat record surat masuk baru di unit tujuan tersebut!
-        if ($request->tujuan_tipe === 'unit' && $request->ke_unit_id) {
+        // Jika tujuan UNIT (bisa satu atau lebih dari satu unit)
+        if ($request->tujuan_tipe === 'unit' && ! empty($targetUnitIds)) {
             $unitAsalNama = $suratAsal->unit ? $suratAsal->unit->nama_unit : 'Unit Pengirim';
-            $suratMasukUnit = SuratMasuk::create([
-                'no_surat_asal' => $suratAsal->no_surat_asal,
-                'tanggal_surat' => $suratAsal->tanggal_surat,
-                'tanggal_terima' => now()->toDateString(),
-                'asal_surat' => $suratAsal->asal_surat.' (via '.$unitAsalNama.')',
-                'perihal' => $suratAsal->perihal,
-                'kategori_id' => $suratAsal->kategori_id,
-                'jenis_surat_id' => $suratAsal->jenis_surat_id,
-                'id_unit' => $request->ke_unit_id,
-                'file_surat' => $suratAsal->file_surat,
-                'keterangan' => 'Disposisi dari '.$unitAsalNama.'. Instruksi: '.$request->instruksi,
-                'asal_disposisi_id' => $disposisiTujuan->id_disposisi_tujuan,
-                'status_arsip' => 'belum_ditinjau',
-                'dicatat_oleh' => $user->id_user,
-            ]);
 
-            // Kirim notifikasi ke seluruh staf_tu dan pimpinan di unit tujuan
-            $staffUnit = User::where('id_unit', $request->ke_unit_id)
-                ->where('status', 'aktif')
-                ->whereHas('role', function ($r) {
-                    $r->whereIn('nama_role', ['pimpinan', 'staff_tu', 'admin_unit']);
-                })->get();
-
-            foreach ($staffUnit as $pegawai) {
-                Notifikasi::create([
-                    'user_id' => $pegawai->id_user,
-                    'sender_id' => $user->id_user,
-                    'judul' => 'Surat Masuk via Disposisi '.$unitAsalNama,
-                    'pesan' => "Unit Anda menerima lembar disposisi baru untuk perihal: '{$suratAsal->perihal}'",
-                    'url' => route('surat-masuk.show', $suratMasukUnit->id_surat_masuk),
-                    'tipe' => 'info',
-                    'is_read' => false,
+            foreach ($targetUnitIds as $targetUnitId) {
+                $disposisiTujuan = DisposisiTujuan::create([
+                    'id_disposisi' => $disposisi->id_disposisi,
+                    'tujuan_tipe' => 'unit',
+                    'ke_user_id' => null,
+                    'ke_unit_id' => $targetUnitId,
+                    'status' => 'belum_diproses',
                 ]);
+
+                // Buat record surat masuk otomatis di setiap unit tujuan
+                $suratMasukUnit = SuratMasuk::create([
+                    'no_surat_asal' => $suratAsal->no_surat_asal,
+                    'tanggal_surat' => $suratAsal->tanggal_surat,
+                    'tanggal_terima' => now()->toDateString(),
+                    'asal_surat' => $suratAsal->asal_surat.' (via '.$unitAsalNama.')',
+                    'perihal' => $suratAsal->perihal,
+                    'kategori_id' => $suratAsal->kategori_id,
+                    'jenis_surat_id' => $suratAsal->jenis_surat_id,
+                    'id_unit' => $targetUnitId,
+                    'file_surat' => $suratAsal->file_surat,
+                    'keterangan' => 'Disposisi dari '.$unitAsalNama.'. Instruksi: '.$request->instruksi,
+                    'asal_disposisi_id' => $disposisiTujuan->id_disposisi_tujuan,
+                    'status_arsip' => 'belum_ditinjau',
+                    'dicatat_oleh' => $user->id_user,
+                ]);
+
+                // Kirim notifikasi real-time ke staf & pimpinan di unit tujuan tersebut
+                $staffUnit = User::where('id_unit', $targetUnitId)
+                    ->where('status', 'aktif')
+                    ->whereHas('role', function ($r) {
+                        $r->whereIn('nama_role', ['pimpinan', 'staff_tu', 'admin_unit']);
+                    })->get();
+
+                foreach ($staffUnit as $pegawai) {
+                    Notifikasi::create([
+                        'user_id' => $pegawai->id_user,
+                        'sender_id' => $user->id_user,
+                        'judul' => 'Surat Masuk via Disposisi '.$unitAsalNama,
+                        'pesan' => "Unit Anda menerima lembar disposisi baru untuk perihal: '{$suratAsal->perihal}'",
+                        'url' => route('surat-masuk.show', $suratMasukUnit->id_surat_masuk),
+                        'tipe' => 'info',
+                        'is_read' => false,
+                    ]);
+                }
             }
         }
 
-        return redirect()->route('surat-masuk.show', $request->id_surat_masuk)->with('success', 'Disposisi elektronik berhasil dikirim sesuai alur hierarki.');
+        $jumlahUnit = count($targetUnitIds);
+        $pesanSukses = $request->tujuan_tipe === 'unit'
+            ? "Disposisi elektronik berhasil dikirim ke {$jumlahUnit} unit tujuan."
+            : 'Disposisi elektronik berhasil dikirim ke pegawai tujuan.';
+
+        return redirect()->route('surat-masuk.show', $request->id_surat_masuk)->with('success', $pesanSukses);
     }
 
     public function show($id)
