@@ -27,12 +27,15 @@ class SuratKeluar extends Model
         'file_draft',
         'file_final',
         'status_surat',
+        'sudah_direvisi',
+        'catatan_revisi_terakhir',
         'dibuat_oleh',
     ];
 
     protected $casts = [
         'tanggal_draft' => 'date',
         'created_at' => 'datetime',
+        'sudah_direvisi' => 'boolean',
     ];
 
     public function unit()

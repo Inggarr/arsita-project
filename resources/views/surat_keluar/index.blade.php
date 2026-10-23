@@ -90,17 +90,24 @@
                                     <i class="bi bi-printer"></i>
                                 </a>
                                 @if(in_array($sk->status_surat, ['draft', 'revisi']) && ($sk->dibuat_oleh == $user->id_user || $role === 'admin_rektorat'))
-                                    <form action="{{ route('surat-keluar.ajukan', $sk->id_surat_keluar) }}" method="POST" style="display: inline;">
-                                        @csrf
-                                        <button type="submit" class="btn btn-warning btn-sm" style="background: #d97706; color: #fff; border: none;" title="Ajukan ACC ke Pimpinan"
-                                            data-confirm="Ajukan draft surat keluar ini ke pimpinan untuk proses persetujuan (ACC)? Setelah diajukan, draf akan diperiksa sebelum nomor resmi terbit."
-                                            data-confirm-title="Ajukan Persetujuan (ACC)"
-                                            data-confirm-type="info"
-                                            data-confirm-btn="Ya, Ajukan Surat"
-                                            data-confirm-class="btn-primary">
-                                            <i class="bi bi-send"></i> Ajukan
+                                    @if($sk->status_surat === 'draft' || ($sk->status_surat === 'revisi' && $sk->sudah_direvisi))
+                                        <form action="{{ route('surat-keluar.ajukan', $sk->id_surat_keluar) }}" method="POST" style="display: inline;">
+                                            @csrf
+                                            <button type="submit" class="btn btn-warning btn-sm" style="background: #d97706; color: #fff; border: none;" title="{{ $sk->status_surat === 'revisi' ? 'Ajukan Kembali ke Pimpinan' : 'Ajukan ACC ke Pimpinan' }}"
+                                                data-confirm="Ajukan draft surat keluar ini ke pimpinan untuk proses persetujuan (ACC)? Setelah diajukan, draf akan diperiksa sebelum nomor resmi terbit."
+                                                data-confirm-title="Ajukan Persetujuan (ACC)"
+                                                data-confirm-type="info"
+                                                data-confirm-btn="Ya, Ajukan Surat"
+                                                data-confirm-class="btn-primary">
+                                                <i class="bi bi-send"></i> {{ $sk->status_surat === 'revisi' ? 'Ajukan Lagi' : 'Ajukan' }}
+                                            </button>
+                                        </form>
+                                    @elseif($sk->status_surat === 'revisi' && !$sk->sudah_direvisi)
+                                        <button type="button" class="btn btn-secondary btn-sm" style="background: #94a3b8; color: #fff; border: none; cursor: not-allowed;" title="Wajib diedit terlebih dahulu sebelum diajukan kembali"
+                                            onclick="arsitaToast ? arsitaToast('warning', 'Perbaiki/edit draft surat ini terlebih dahulu sebelum diajukan kembali.') : alert('Perbaiki draft surat terlebih dahulu.');">
+                                            <i class="bi bi-lock-fill"></i> Ajukan
                                         </button>
-                                    </form>
+                                    @endif
                                     <a href="{{ route('surat-keluar.edit', $sk->id_surat_keluar) }}" class="btn btn-primary btn-sm">Edit</a>
                                 @endif
                             </div>

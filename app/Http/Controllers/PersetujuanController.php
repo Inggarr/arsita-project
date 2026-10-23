@@ -93,7 +93,11 @@ class PersetujuanController extends Controller
                 'tanggal' => now(),
             ]);
 
-            $surat->update(['status_surat' => 'revisi']);
+            $surat->update([
+                'status_surat' => 'revisi',
+                'sudah_direvisi' => false,
+                'catatan_revisi_terakhir' => $catatan,
+            ]);
 
             // Berikan notifikasi langsung ke staf pembuat surat
             if ($surat->dibuat_oleh) {

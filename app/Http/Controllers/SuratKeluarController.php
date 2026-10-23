@@ -190,9 +190,14 @@ class SuratKeluarController extends Controller
             $data['file_draft'] = $fileName;
         }
 
+        // Jika surat sedang dalam status revisi, tandai bahwa surat sudah melalui proses pengeditan
+        if ($surat->status_surat === 'revisi') {
+            $data['sudah_direvisi'] = true;
+        }
+
         $surat->update($data);
 
-        return redirect()->route('surat-keluar.show', $surat->id_surat_keluar)->with('success', 'Draft surat berhasil diperbarui.');
+        return redirect()->route('surat-keluar.show', $surat->id_surat_keluar)->with('success', 'Draft surat berhasil diperbarui. Silakan ajukan kembali untuk persetujuan (ACC).');
     }
 
     public function destroy($id)
@@ -206,6 +211,12 @@ class SuratKeluarController extends Controller
     public function ajukan($id)
     {
         $surat = SuratKeluar::with('unit')->findOrFail($id);
+
+        // Jika surat berstatus 'revisi', pastikan staff sudah melakukan pengeditan terlebih dahulu
+        if ($surat->status_surat === 'revisi' && ! $surat->sudah_direvisi) {
+            return back()->with('error', 'Surat belum dapat diajukan! Anda harus melakukan pengeditan/perbaikan draft surat terlebih dahulu sesuai catatan dari pimpinan.');
+        }
+
         $totalTahap = ArsitaService::hitungTahapAcc($surat->unit);
 
         // Bersihkan data acc lama jika sebelumnya ada revisi
@@ -220,7 +231,10 @@ class SuratKeluarController extends Controller
             ]);
         }
 
-        $surat->update(['status_surat' => 'menunggu_acc']);
+        $surat->update([
+            'status_surat' => 'menunggu_acc',
+            'sudah_direvisi' => false, // Reset flag revisi untuk siklus berikutnya jika ada penolakan lagi
+        ]);
 
         return back()->with('success', "Surat keluar berhasil diajukan untuk proses persetujuan ({$totalTahap} tahap ACC).");
     }

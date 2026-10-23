@@ -23,6 +23,34 @@
 </div>
 @endif
 
+@if($surat->status_surat === 'revisi')
+    @php
+        $catatanRevisi = $surat->catatan_revisi_terakhir;
+        if (!$catatanRevisi && $surat->persetujuan->count()) {
+            $lastTolak = $surat->persetujuan->where('status', 'ditolak')->last();
+            $catatanRevisi = $lastTolak?->catatan_penolakan;
+        }
+    @endphp
+    <div style="background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-top: 1px;">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </div>
+            <div>
+                <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #991b1b;">
+                    Catatan Perbaikan dari Pimpinan:
+                </h4>
+                <div style="font-size: 13px; color: #7f1d1d; margin-top: 4px; line-height: 1.5; font-style: italic;">
+                    "{{ $catatanRevisi ?: 'Perbaiki draf naskah dinas sebelum diajukan kembali.' }}"
+                </div>
+                <div style="font-size: 11.5px; color: #b91c1c; margin-top: 6px;">
+                    <i class="bi bi-info-circle"></i> Setelah Anda menyimpan perubahan ini, status draf akan terbuka sehingga dapat diajukan kembali ke pimpinan.
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
 @if(Auth::user()->isAdminRektorat())
 <div style="margin-bottom: 18px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
     <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Ubah Unit Pembuat (Khusus Hak Admin Rektorat)</label>

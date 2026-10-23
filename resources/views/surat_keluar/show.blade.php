@@ -24,6 +24,47 @@
         </div>
     </div>
 
+    @if($surat->status_surat === 'revisi')
+        @php
+            $catatanRevisi = $surat->catatan_revisi_terakhir;
+            if (!$catatanRevisi && $surat->persetujuan->count()) {
+                $lastTolak = $surat->persetujuan->where('status', 'ditolak')->last();
+                $catatanRevisi = $lastTolak?->catatan_penolakan;
+            }
+        @endphp
+        <div style="background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px; padding: 18px 20px; margin-bottom: 22px;">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+                <div style="width: 38px; height: 38px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; margin-top: 2px;">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                </div>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: #991b1b;">
+                            Catatan Revisi dari Pimpinan
+                        </h4>
+                        @if($surat->sudah_direvisi)
+                            <span style="display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                                <i class="bi bi-check-circle-fill"></i> Naskah Sudah Diedit / Siap Diajukan Kembali
+                            </span>
+                        @else
+                            <span style="display: inline-flex; align-items: center; gap: 6px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                                <i class="bi bi-pencil-fill"></i> Wajib Diedit Sebelum Diajukan Kembali
+                            </span>
+                        @endif
+                    </div>
+                    <div style="font-size: 13.5px; color: #7f1d1d; margin-top: 8px; line-height: 1.5; background: #ffffff; padding: 12px 14px; border-radius: 8px; border: 1px solid #fee2e2; font-style: italic;">
+                        "{{ $catatanRevisi ?: 'Silakan perbaiki data draft surat sesuai arahan pimpinan.' }}"
+                    </div>
+                    @if(!$surat->sudah_direvisi)
+                        <div style="font-size: 12px; color: #991b1b; margin-top: 8px;">
+                            <i class="bi bi-info-circle-fill"></i> Tombol <strong>Ajukan untuk ACC</strong> terkunci sampai Anda membuka menu <strong>Edit Draft</strong> dan menyimpan revisinya.
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         @php
             $rows = [
@@ -158,17 +199,23 @@
     <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
         @if(in_array($surat->status_surat, ['draft','revisi']))
         <a href="{{ route('surat-keluar.edit', $surat->id_surat_keluar) }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #059669; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;"><i class="bi bi-pencil-fill"></i> Edit Draft</a>
-        <form action="{{ route('surat-keluar.ajukan', $surat->id_surat_keluar) }}" method="POST" style="display: inline;">
-            @csrf
-            <button type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #d97706; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;"
-                data-confirm="Ajukan draft surat keluar ini ke pimpinan untuk proses persetujuan (ACC)? Setelah disetujui, nomor surat resmi akan terbit otomatis."
-                data-confirm-title="Ajukan Persetujuan (ACC)"
-                data-confirm-type="info"
-                data-confirm-btn="Ya, Ajukan Surat"
-                data-confirm-class="btn-primary">
-                <i class="bi bi-send-fill"></i> Ajukan untuk ACC
+        @if($surat->status_surat === 'draft' || ($surat->status_surat === 'revisi' && $surat->sudah_direvisi))
+            <form action="{{ route('surat-keluar.ajukan', $surat->id_surat_keluar) }}" method="POST" style="display: inline;">
+                @csrf
+                <button type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #d97706; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;"
+                    data-confirm="Ajukan draft surat keluar ini ke pimpinan untuk proses persetujuan (ACC)? Setelah disetujui, nomor surat resmi akan terbit otomatis."
+                    data-confirm-title="Ajukan Persetujuan (ACC)"
+                    data-confirm-type="info"
+                    data-confirm-btn="Ya, Ajukan Surat"
+                    data-confirm-class="btn-primary">
+                    <i class="bi bi-send-fill"></i> {{ $surat->status_surat === 'revisi' ? 'Ajukan Kembali untuk ACC' : 'Ajukan untuk ACC' }}
+                </button>
+            </form>
+        @elseif($surat->status_surat === 'revisi' && !$surat->sudah_direvisi)
+            <button type="button" onclick="arsitaToast ? arsitaToast('warning', 'Harap lakukan pengeditan/perbaikan draft surat terlebih dahulu sebelum diajukan kembali ke pimpinan.') : alert('Harap lakukan pengeditan draft terlebih dahulu.');" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #94a3b8; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: not-allowed;" title="Wajib diedit terlebih dahulu">
+                <i class="bi bi-lock-fill"></i> Ajukan Kembali (Terkunci)
             </button>
-        </form>
+        @endif
         @endif
 
         <a href="{{ route('surat-keluar.cetak', $surat->id_surat_keluar) }}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #7c3aed; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;">
