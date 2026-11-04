@@ -20,9 +20,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
+
 // Authenticated Application
 Route::middleware('auth')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
