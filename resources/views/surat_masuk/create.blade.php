@@ -64,12 +64,29 @@
     </div>
     <div>
         <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Unit Tujuan <span style="color: #dc2626;">*</span></label>
-        <select name="id_unit" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
-            <option value="">— Pilih Unit —</option>
-            @foreach($unitList as $u)
-                <option value="{{ $u->id_unit }}" {{ old('id_unit', Auth::user()->id_unit) == $u->id_unit ? 'selected' : '' }}>{{ $u->nama_unit }}</option>
-            @endforeach
-        </select>
+        @if($isAdminRektorat)
+            {{-- Admin rektorat: bisa pilih unit tujuan secara bebas --}}
+            <select name="id_unit" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
+                <option value="">— Pilih Unit Tujuan —</option>
+                @foreach($unitList as $u)
+                    <option value="{{ $u->id_unit }}" {{ old('id_unit') == $u->id_unit ? 'selected' : '' }}>{{ $u->nama_unit }}</option>
+                @endforeach
+            </select>
+            <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
+                <i class="bi bi-info-circle"></i> Sebagai Admin Rektorat, Anda dapat mencatat surat ke unit mana saja.
+            </small>
+        @else
+            {{-- User biasa: unit tujuan otomatis = unit sendiri --}}
+            <input type="hidden" name="id_unit" value="{{ Auth::user()->id_unit }}">
+            <div style="padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; color: #334155; display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-building-fill" style="color: #2563eb;"></i>
+                <span style="font-weight: 600;">{{ Auth::user()->unit?->nama_unit ?? '—' }}</span>
+                <span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">(unit Anda)</span>
+            </div>
+            <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
+                <i class="bi bi-lock-fill"></i> Surat masuk otomatis dicatat ke unit Anda.
+            </small>
+        @endif
     </div>
 </div>
 

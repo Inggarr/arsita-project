@@ -45,7 +45,8 @@ class NotifikasiController extends Controller
     }
 
     /**
-     * Tandai satu notifikasi sebagai sudah dibaca dan arahkan ke URL-nya
+     * Arahkan ke URL notifikasi tanpa mengurangi status belum dibaca
+     * (Notifikasi hanya akan dianggap selesai/berkurang setelah ditindaklanjuti secara nyata)
      */
     public function readAndRedirect($id)
     {
@@ -54,7 +55,8 @@ class NotifikasiController extends Controller
             ->where('user_id', $user->id_user)
             ->firstOrFail();
 
-        $notif->update(['is_read' => true]);
+        // JANGAN ubah is_read menjadi true hanya karena diklik/dilihat.
+        // Notifikasi tetap belum dibaca (unread) sampai benar-benar ditindaklanjuti.
 
         return redirect($notif->url ?: route('dashboard'));
     }

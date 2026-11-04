@@ -67,17 +67,38 @@
     </div>
 
     <div id="field-individu">
-        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Pilih Pengguna / Pegawai *</label>
-        <select name="ke_user_id" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
-            <option value="">— Pilih Pengguna —</option>
-            @foreach($userList as $u)
-                <option value="{{ $u->id_user }}" {{ old('ke_user_id') == $u->id_user ? 'selected' : '' }}>
-                    {{ $u->nama ?: $u->name }} — {{ ucwords(str_replace('_', ' ', $u->role->nama_role ?? 'Pegawai')) }} ({{ $u->unit?->nama_unit ?? '-' }})
-                </option>
-            @endforeach
-        </select>
-        <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block;">
-            Daftar pengguna disesuaikan dengan lingkup unit kerja dan hierarki atasan Anda.
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="font-size: 13px; font-weight: 600; color: #334155; margin: 0;">
+                Pilih Pengguna / Pegawai * <span style="font-size: 11.5px; font-weight: 400; color: #64748b;">(Bisa pilih lebih dari satu orang)</span>
+            </label>
+            @if($userList->count() > 1)
+                <button type="button" id="btn-toggle-all-users" onclick="toggleAllUsers()" style="background: none; border: none; color: #7c3aed; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                    Pilih Semua Pegawai
+                </button>
+            @endif
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc;">
+            @php
+                $oldUsers = old('ke_user_ids', old('ke_user_id') ? [old('ke_user_id')] : []);
+            @endphp
+            @forelse($userList as $u)
+                <label style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='#a78bfa'; this.style.background='#faf5ff';" onmouseout="if(!this.querySelector('input').checked){ this.style.borderColor='#e2e8f0'; this.style.background='#ffffff'; }">
+                    <input type="checkbox" name="ke_user_ids[]" value="{{ $u->id_user }}" class="user-checkbox" {{ in_array($u->id_user, (array)$oldUsers) ? 'checked' : '' }} style="width: 16px; height: 16px; cursor: pointer; accent-color: #7c3aed;">
+                    <div style="flex: 1;">
+                        <span style="font-size: 13.5px; font-weight: 600; color: #0f172a;">{{ $u->nama ?: $u->name }}</span>
+                        <span style="font-size: 11px; color: #64748b; margin-left: 6px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ ucwords(str_replace('_', ' ', $u->role->nama_role ?? 'Pegawai')) }}</span>
+                        <span style="font-size: 11px; color: #475569; margin-left: 4px;">({{ $u->unit?->nama_unit ?? '-' }})</span>
+                    </div>
+                </label>
+            @empty
+                <div style="text-align: center; color: #94a3b8; font-size: 12.5px; padding: 16px 0;">
+                    Tidak ada pegawai yang dapat dipilih dalam lingkup unit Anda.
+                </div>
+            @endforelse
+        </div>
+        <small style="color: #64748b; font-size: 11.5px; margin-top: 6px; display: block;">
+            <i class="bi bi-info-circle"></i> Daftar pegawai disesuaikan dengan lingkup unit sendiri dan unit di bawah naungan Anda.
         </small>
     </div>
 
@@ -164,6 +185,28 @@ function toggleAllUnits() {
 
     if (btn) {
         btn.textContent = newState ? 'Hapus Semua Pilihan' : 'Pilih Semua Unit';
+    }
+}
+
+function toggleAllUsers() {
+    var cbs = document.querySelectorAll('.user-checkbox');
+    var btn = document.getElementById('btn-toggle-all-users');
+    if (!cbs.length) return;
+
+    var allChecked = Array.from(cbs).every(function(cb) { return cb.checked; });
+    var newState = !allChecked;
+
+    cbs.forEach(function(cb) {
+        cb.checked = newState;
+        var parentLabel = cb.closest('label');
+        if (parentLabel) {
+            parentLabel.style.borderColor = newState ? '#7c3aed' : '#e2e8f0';
+            parentLabel.style.background = newState ? '#f5f3ff' : '#ffffff';
+        }
+    });
+
+    if (btn) {
+        btn.textContent = newState ? 'Hapus Semua Pilihan' : 'Pilih Semua Pegawai';
     }
 }
 </script>

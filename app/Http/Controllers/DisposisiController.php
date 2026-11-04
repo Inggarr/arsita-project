@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\DisposisiMasukMail;
 use App\Models\Disposisi;
 use App\Models\DisposisiTujuan;
 use App\Models\Notifikasi;
@@ -12,6 +13,8 @@ use App\Models\User;
 use App\Services\ArsitaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class DisposisiController extends Controller
 {
@@ -49,6 +52,12 @@ class DisposisiController extends Controller
         $surat = SuratMasuk::findOrFail($surat_masuk_id);
         $user = Auth::user();
 
+        // Validasi: Surat masuk harus dibaca terlebih dahulu sebelum didisposisikan
+        if (! $surat->dibaca_pada) {
+            return redirect()->route('surat-masuk.show', $surat->id_surat_masuk)
+                ->with('warning', 'Harap buka dan baca naskah surat masuk terlebih dahulu sebelum membuat lembar disposisi.');
+        }
+
         // Ambil tujuan valid sesuai prinsip hierarki jabatan & unit
         $tujuanData = ArsitaService::getTujuanDisposisiValid($user);
         $unitList = $tujuanData['units'];
@@ -68,11 +77,19 @@ class DisposisiController extends Controller
             'tenggat_waktu' => 'nullable|date',
             'catatan' => 'nullable|string',
             'tujuan_tipe' => 'required|in:individu,unit',
-            'ke_user_id' => 'nullable|required_if:tujuan_tipe,individu|exists:users,id_user',
+            'ke_user_ids' => 'nullable|required_if:tujuan_tipe,individu|array|min:1',
+            'ke_user_ids.*' => 'exists:users,id_user',
+            'ke_user_id' => 'nullable|exists:users,id_user',
             'ke_unit_ids' => 'nullable|required_if:tujuan_tipe,unit|array|min:1',
             'ke_unit_ids.*' => 'exists:units,id_unit',
             'ke_unit_id' => 'nullable|exists:units,id_unit',
         ]);
+
+        $suratAsal = SuratMasuk::findOrFail($request->id_surat_masuk);
+        if (! $suratAsal->dibaca_pada) {
+            return redirect()->route('surat-masuk.show', $suratAsal->id_surat_masuk)
+                ->with('error', 'Surat masuk belum dibaca. Silakan telaah isi surat terlebih dahulu sebelum mendisposisikan.');
+        }
 
         $user = Auth::user();
         $tujuanData = ArsitaService::getTujuanDisposisiValid($user);
@@ -92,25 +109,40 @@ class DisposisiController extends Controller
 
             // Validasi Hierarki Struktural untuk tiap unit tujuan
             $allowedUnitIds = $tujuanData['units']->pluck('id_unit')->toArray();
+
+            // Prodi tidak memiliki unit bawahan — blokir disposisi unit dari level prodi
+            if ($tujuanData['level_pengirim'] === 'prodi') {
+                return back()->withInput()->with('error', 'Program Studi tidak dapat melakukan disposisi ke unit lain. Disposisi hanya dapat ditujukan ke individu internal Program Studi.');
+            }
+
             foreach ($targetUnitIds as $targetUnitId) {
                 if (! in_array($targetUnitId, $allowedUnitIds, true)) {
                     $targetUnit = Unit::find($targetUnitId);
                     $targetName = $targetUnit ? $targetUnit->nama_unit : 'Unit yang dipilih';
 
-                    if ($tujuanData['level_pengirim'] === 'prodi') {
-                        return back()->withInput()->with('error', "Pelanggaran Alur Hierarki: Program Studi tidak dapat mendisposisikan surat langsung ke {$targetName}. Sesuai tata tertib, disposisi harus ditujukan ke Fakultas terlebih dahulu.");
-                    }
-
-                    return back()->withInput()->with('error', "Unit {$targetName} tidak berada dalam hierarki kewenangan disposisi Anda.");
+                    return back()->withInput()->with('error', "Unit {$targetName} tidak berada dalam cakupan kewenangan disposisi Anda.");
                 }
             }
         }
 
-        // 2. Jika tujuan INDIVIDU, pastikan user berada dalam lingkup yang sah
+        // 2. Kumpulkan & validasi user target jika tujuan INDIVIDU
+        $targetUserIds = [];
         if ($request->tujuan_tipe === 'individu') {
+            if ($request->has('ke_user_ids') && is_array($request->ke_user_ids)) {
+                $targetUserIds = array_map('intval', $request->ke_user_ids);
+            } elseif ($request->filled('ke_user_id')) {
+                $targetUserIds = [(int) $request->ke_user_id];
+            }
+
+            if (empty($targetUserIds)) {
+                return back()->withInput()->with('error', 'Pilih minimal satu pegawai tujuan disposisi.');
+            }
+
             $allowedUserIds = $tujuanData['users']->pluck('id_user')->toArray();
-            if (! in_array((int) $request->ke_user_id, $allowedUserIds, true)) {
-                return back()->withInput()->with('error', 'Pegawai yang dipilih berada di luar hierarki kewenangan disposisi unit Anda.');
+            foreach ($targetUserIds as $targetUserId) {
+                if (! in_array($targetUserId, $allowedUserIds, true)) {
+                    return back()->withInput()->with('error', 'Satu atau lebih pegawai yang dipilih berada di luar hierarki kewenangan disposisi unit Anda.');
+                }
             }
         }
 
@@ -130,25 +162,37 @@ class DisposisiController extends Controller
             'status_arsip' => 'didisposisikan',
         ]);
 
-        // Jika tujuan INDIVIDU
-        if ($request->tujuan_tipe === 'individu' && $request->ke_user_id) {
-            $disposisiTujuan = DisposisiTujuan::create([
-                'id_disposisi' => $disposisi->id_disposisi,
-                'tujuan_tipe' => 'individu',
-                'ke_user_id' => $request->ke_user_id,
-                'ke_unit_id' => null,
-                'status' => 'belum_diproses',
-            ]);
+        // Jika tujuan INDIVIDU (bisa satu atau lebih pegawai)
+        if ($request->tujuan_tipe === 'individu' && ! empty($targetUserIds)) {
+            foreach ($targetUserIds as $targetUserId) {
+                $disposisiTujuan = DisposisiTujuan::create([
+                    'id_disposisi' => $disposisi->id_disposisi,
+                    'tujuan_tipe' => 'individu',
+                    'ke_user_id' => $targetUserId,
+                    'ke_unit_id' => null,
+                    'status' => 'belum_diproses',
+                ]);
 
-            Notifikasi::create([
-                'user_id' => $request->ke_user_id,
-                'sender_id' => $user->id_user,
-                'judul' => 'Disposisi Surat Masuk Baru',
-                'pesan' => "Anda menerima disposisi baru untuk surat '{$suratAsal->perihal}'. Instruksi: {$request->instruksi}",
-                'url' => route('disposisi.show', $disposisiTujuan->id_disposisi_tujuan),
-                'tipe' => 'info',
-                'is_read' => false,
-            ]);
+                Notifikasi::create([
+                    'user_id' => $targetUserId,
+                    'sender_id' => $user->id_user,
+                    'judul' => 'Disposisi Surat Masuk Baru',
+                    'pesan' => "Anda menerima disposisi baru untuk surat '{$suratAsal->perihal}'. Instruksi: {$request->instruksi}",
+                    'url' => route('disposisi.show', $disposisiTujuan->id_disposisi_tujuan),
+                    'tipe' => 'info',
+                    'is_read' => false,
+                ]);
+
+                // Kirim email ke penerima individu
+                $penerimaUser = User::find($targetUserId);
+                if ($penerimaUser && $penerimaUser->email) {
+                    try {
+                        Mail::to($penerimaUser->email)->send(new DisposisiMasukMail($suratAsal, $disposisi, $penerimaUser, $disposisiTujuan));
+                    } catch (\Throwable $e) {
+                        Log::error('Gagal mengirim email disposisi individu: '.$e->getMessage());
+                    }
+                }
+            }
         }
 
         // Jika tujuan UNIT (bisa satu atau lebih dari satu unit)
@@ -199,13 +243,27 @@ class DisposisiController extends Controller
                         'is_read' => false,
                     ]);
                 }
+
+                // Kirim email hanya ke pimpinan unit tujuan (role 4)
+                $pimpinanUnit = User::where('id_unit', $targetUnitId)
+                    ->where('id_role', 4)
+                    ->first();
+
+                if ($pimpinanUnit && $pimpinanUnit->email) {
+                    try {
+                        Mail::to($pimpinanUnit->email)->send(new DisposisiMasukMail($suratAsal, $disposisi, $pimpinanUnit, $disposisiTujuan));
+                    } catch (\Throwable $e) {
+                        Log::error('Gagal mengirim email disposisi unit: '.$e->getMessage());
+                    }
+                }
             }
         }
 
         $jumlahUnit = count($targetUnitIds);
+        $jumlahUser = count($targetUserIds);
         $pesanSukses = $request->tujuan_tipe === 'unit'
             ? "Disposisi elektronik berhasil dikirim ke {$jumlahUnit} unit tujuan."
-            : 'Disposisi elektronik berhasil dikirim ke pegawai tujuan.';
+            : "Disposisi elektronik berhasil dikirim ke {$jumlahUser} pegawai tujuan.";
 
         return redirect()->route('surat-masuk.show', $request->id_surat_masuk)->with('success', $pesanSukses);
     }
@@ -220,12 +278,32 @@ class DisposisiController extends Controller
             'penerimaUnit',
         ])->findOrFail($id);
 
+        $user = Auth::user();
+
+        // Otorisasi: hanya penerima (user/unit), pengirim disposisi, atau admin rektorat yang boleh melihat
+        $isPenerimaIndividu = $disposisiTujuan->ke_user_id === $user->id_user;
+        $isPenerimaUnit = $disposisiTujuan->ke_unit_id && $disposisiTujuan->ke_unit_id === $user->id_unit;
+        $isPengirim = $disposisiTujuan->disposisi && $disposisiTujuan->disposisi->dari_user_id === $user->id_user;
+
+        if (! $user->isAdminRektorat() && ! $isPenerimaIndividu && ! $isPenerimaUnit && ! $isPengirim) {
+            abort(403, 'Akses ditolak. Lembar disposisi ini bukan ditujukan untuk akun atau unit kerja Anda.');
+        }
+
         return view('disposisi.show', compact('disposisiTujuan'));
     }
 
     public function tindakLanjut(Request $request, $id)
     {
         $disposisiTujuan = DisposisiTujuan::findOrFail($id);
+        $user = Auth::user();
+
+        // Otorisasi: hanya penerima (user/unit) atau admin rektorat yang berhak mengisi tindak lanjut
+        $isPenerimaIndividu = $disposisiTujuan->ke_user_id === $user->id_user;
+        $isPenerimaUnit = $disposisiTujuan->ke_unit_id && $disposisiTujuan->ke_unit_id === $user->id_unit;
+
+        if (! $user->isAdminRektorat() && ! $isPenerimaIndividu && ! $isPenerimaUnit) {
+            abort(403, 'Akses ditolak. Anda tidak memiliki kewenangan untuk menindaklanjuti lembar disposisi ini.');
+        }
 
         $request->validate([
             'catatan' => 'required|string',
@@ -236,7 +314,8 @@ class DisposisiController extends Controller
         $fileName = null;
         if ($request->hasFile('lampiran')) {
             $file = $request->file('lampiran');
-            $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+            $extension = $file->extension() ?: 'pdf';
+            $fileName = time().'_'.uniqid().'.'.$extension;
             $file->move(public_path('uploads/tindak_lanjut'), $fileName);
         }
 
@@ -248,6 +327,11 @@ class DisposisiController extends Controller
         ]);
 
         $disposisiTujuan->update(['status' => $request->status]);
+
+        // Tandai notifikasi terkait disposisi ini sebagai sudah dibaca (karena sudah ditindaklanjuti)
+        Notifikasi::where('url', 'like', '%disposisi/'.$disposisiTujuan->id_disposisi_tujuan.'%')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
 
         return back()->with('success', 'Laporan tindak lanjut disposisi berhasil disimpan.');
     }

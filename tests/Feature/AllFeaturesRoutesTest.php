@@ -38,13 +38,21 @@ class AllFeaturesRoutesTest extends TestCase
             '/master/unit',
             '/master/kategori',
             '/master/jenis',
-            '/master/format-nomor',
             '/pengguna',
         ];
 
         foreach ($routes as $route) {
             $response = $this->actingAs($admin)->get($route);
             $response->assertStatus(200);
+        }
+
+        // Format nomor hanya bisa diakses oleh staff
+        $staff = User::whereHas('role', function ($q) {
+            $q->where('nama_role', 'staff_tu');
+        })->first();
+
+        if ($staff) {
+            $this->actingAs($staff)->get('/master/format-nomor')->assertStatus(200);
         }
 
         // Test detail surat masuk jika ada

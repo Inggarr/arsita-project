@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\LaporanExport;
 use App\Models\KategoriSurat;
 use App\Models\SuratKeluar;
 use App\Models\SuratMasuk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ArsipLaporanController extends Controller
 {
@@ -144,5 +146,56 @@ class ArsipLaporanController extends Controller
         $listKeluar = $queryK->get();
 
         return view('laporan.index', compact('listMasuk', 'listKeluar', 'startDate', 'endDate'));
+    }
+
+    public function laporanPdf(Request $request)
+    {
+        $user = Auth::user();
+        $startDate = $request->get('start_date', date('Y-01-01'));
+        $endDate = $request->get('end_date', date('Y-m-d'));
+
+        $queryM = SuratMasuk::with(['unit', 'kategori'])
+            ->whereBetween('tanggal_terima', [$startDate, $endDate]);
+
+        $queryK = SuratKeluar::with(['unit', 'kategori', 'nomorSurat'])
+            ->whereBetween('tanggal_draft', [$startDate, $endDate]);
+
+        if (! $user->isAdminRektorat() && $user->id_unit) {
+            $queryM->where('id_unit', $user->id_unit);
+            $queryK->where('id_unit', $user->id_unit);
+        }
+
+        $listMasuk = $queryM->get();
+        $listKeluar = $queryK->get();
+
+        return view('laporan.pdf', compact('listMasuk', 'listKeluar', 'startDate', 'endDate'));
+    }
+
+    public function laporanExcel(Request $request)
+    {
+        $user = Auth::user();
+        $startDate = $request->get('start_date', date('Y-01-01'));
+        $endDate = $request->get('end_date', date('Y-m-d'));
+
+        $queryM = SuratMasuk::with(['unit', 'kategori'])
+            ->whereBetween('tanggal_terima', [$startDate, $endDate]);
+
+        $queryK = SuratKeluar::with(['unit', 'kategori', 'nomorSurat'])
+            ->whereBetween('tanggal_draft', [$startDate, $endDate]);
+
+        if (! $user->isAdminRektorat() && $user->id_unit) {
+            $queryM->where('id_unit', $user->id_unit);
+            $queryK->where('id_unit', $user->id_unit);
+        }
+
+        $listMasuk = $queryM->get();
+        $listKeluar = $queryK->get();
+
+        $filename = 'laporan-surat_'.$startDate.'_sd_'.$endDate.'.xlsx';
+
+        return Excel::download(
+            new LaporanExport($listMasuk, $listKeluar, $startDate, $endDate),
+            $filename
+        );
     }
 }

@@ -12,7 +12,12 @@
             <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0;">{{ $surat->perihal }}</h1>
             <p style="color: #64748b; font-size: 13px; margin: 0;">No. Surat Asal: <strong>{{ $surat->no_surat_asal }}</strong></p>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            @if($surat->dibaca_pada)
+                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 9999px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;" title="Dibaca pada {{ $surat->dibaca_pada->format('d/m/Y H:i') }}">
+                    <i class="bi bi-eye-fill"></i> Sudah Dibaca ({{ $surat->dibaca_pada->format('d/m/Y H:i') }})
+                </span>
+            @endif
             {!! \App\Services\ArsitaService::badgeStatus($surat->status_arsip) !!}
         </div>
     </div>
@@ -29,6 +34,10 @@
                 ['Jenis Surat', $surat->jenisSurat ? $surat->jenisSurat->nama_jenis : '—'],
                 ['Dicatat Oleh', $surat->pencatat ? $surat->pencatat->name : '—'],
             ];
+
+            if ($surat->dibaca_pada) {
+                $rows[] = ['Status Baca', 'Telah dibuka oleh ' . ($surat->pembaca?->name ?? 'Penerima Unit') . ' pada ' . $surat->dibaca_pada->format('d/m/Y H:i')];
+            }
         @endphp
         @foreach($rows as $i => $row)
         <div style="padding: 12px 16px; {{ $i % 2 == 0 ? 'background: #f8fafc;' : '' }} border-bottom: 1px solid #f1f5f9;">
@@ -81,130 +90,168 @@
         $lampiranSurat = $skAsal ? $skAsal->lampiran : '-';
     @endphp
 
-    <!-- Pratinjau Lembar Fisik Surat A4 Standar Word untuk Penerima -->
+    @php
+        $fileExt = $surat->file_surat ? strtolower(pathinfo($surat->file_surat, PATHINFO_EXTENSION)) : null;
+        $isPdf = in_array($fileExt, ['pdf']);
+        $isImage = in_array($fileExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+    @endphp
+
+    <!-- Pratinjau Dokumen / Berkas Surat Masuk -->
     <div style="margin-top: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div style="font-size: 14px; font-weight: 700; color: #0f172a;">
-                <i class="bi bi-file-earmark-text-fill" style="color: #2563eb;"></i> Pratinjau Lembar Surat Resmi (Kertas A4)
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-file-earmark-text-fill" style="color: #2563eb;"></i>
+                @if($surat->file_surat)
+                    Pratinjau Berkas Scan Surat Masuk
+                @else
+                    Pratinjau Dokumen Surat Masuk
+                @endif
             </div>
-            @if($skAsal)
+            @if($surat->file_surat)
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="{{ asset('uploads/surat_masuk/' . $surat->file_surat) }}" target="_blank" style="font-size: 12.5px; color: #2563eb; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;">
+                    <i class="bi bi-box-arrow-up-right"></i> Buka di Tab Baru / Fullscreen
+                </a>
+            </div>
+            @elseif($skAsal)
             <a href="{{ route('surat-keluar.cetak', $skAsal->id_surat_keluar) }}" target="_blank" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: 600;">
                 <i class="bi bi-arrows-fullscreen"></i> Tampilan Cetak / PDF Fullscreen →
             </a>
             @endif
         </div>
 
-        <div style="background: #e2e8f0; border-radius: 12px; padding: 24px 16px; display: flex; justify-content: center; overflow-x: auto;">
-            <!-- Lembar Fisik Kertas A4 Word: Lebar 210mm, Min-Tinggi 297mm, Margin Normal Word 2.54cm (25.4mm) -->
-            <div style="width: 210mm; min-height: 297mm; padding: 25.4mm; background: #ffffff; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 2px; font-family: 'Times New Roman', Times, serif; color: #000000; font-size: 12pt; line-height: 1.5; box-sizing: border-box; flex-shrink: 0;">
-                <!-- Kop Surat Resmi -->
-                <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px;">
-                    <div style="font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
-                        KEMENTERIAN AGAMA REPUBLIK INDONESIA
+        @if($surat->file_surat)
+            {{-- Tampilan untuk berkas scan yang diupload (PDF / Gambar) --}}
+            <div style="background: #334155; border-radius: 12px; padding: 16px; border: 1px solid #cbd5e1; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);">
+                @if($isPdf)
+                    <div style="width: 100%; border-radius: 8px; overflow: hidden; background: #fff;">
+                        <iframe 
+                            src="{{ asset('uploads/surat_masuk/' . $surat->file_surat) }}#toolbar=1&navpanes=0&scrollbar=1" 
+                            style="width: 100%; height: 750px; border: none; display: block;" 
+                            title="Pratinjau Scan Surat PDF">
+                        </iframe>
                     </div>
-                    <div style="font-size: 15pt; font-weight: bold; text-transform: uppercase; color: #1e3a8a; margin: 2px 0;">
-                        UIN SUNAN SUDJATI SERANG CILEGON
+                @elseif($isImage)
+                    <div style="text-align: center; background: #0f172a; padding: 16px; border-radius: 8px; overflow-x: auto;">
+                        <img 
+                            src="{{ asset('uploads/surat_masuk/' . $surat->file_surat) }}" 
+                            alt="Scan Surat Masuk" 
+                            style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); display: inline-block;">
                     </div>
-                    @if($unitPengirim)
-                    <div style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 2px;">
-                        {{ $unitPengirim->nama_unit }}
+                @else
+                    <div style="background: #ffffff; padding: 24px; border-radius: 8px; text-align: center;">
+                        <i class="bi bi-file-earmark-arrow-down" style="font-size: 48px; color: #64748b; display: block; margin-bottom: 12px;"></i>
+                        <p style="font-size: 14px; color: #334155; margin: 0 0 12px 0;">Format berkas (<strong>.{{ $fileExt }}</strong>) tidak mendukung pratinjau langsung di peramban.</p>
+                        <a href="{{ asset('uploads/surat_masuk/' . $surat->file_surat) }}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #2563eb; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none;">
+                            <i class="bi bi-download"></i> Unduh Berkas
+                        </a>
                     </div>
-                    @elseif($surat->asal_surat)
-                    <div style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 2px;">
-                        {{ $surat->asal_surat }}
-                    </div>
-                    @endif
-                    <div style="font-size: 9pt; color: #334155; margin-top: 4px; font-style: italic;">
-                        Jl. Raya Serang-Cilegon KM.3 Cinanggung Serang Banten 42116 · Telp: (0254) 200323 · Website: www.uinssc.ac.id
-                    </div>
-                </div>
-
-                <!-- Tabel Identitas Nomor, Sifat, Lampiran, Hal & Tanggal -->
-                <table style="width: 100%; border-collapse: collapse; font-size: 12pt; margin-bottom: 20px;">
-                    <tr>
-                        <td style="width: 80px; padding: 2px 0; vertical-align: top;">Nomor</td>
-                        <td style="width: 15px; padding: 2px 0; vertical-align: top;">:</td>
-                        <td style="padding: 2px 0; vertical-align: top;">
-                            <strong>{{ $surat->no_surat_asal ?: '___________' }}</strong>
-                        </td>
-                        <td style="text-align: right; width: 40%; padding: 2px 0; vertical-align: top;">
-                            Serang, {{ \App\Services\ArsitaService::tglIndo($surat->tanggal_surat) }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 2px 0; vertical-align: top;">Sifat</td>
-                        <td style="padding: 2px 0; vertical-align: top;">:</td>
-                        <td style="padding: 2px 0; vertical-align: top;">{{ ucfirst($sifatSurat) }}</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 2px 0; vertical-align: top;">Lampiran</td>
-                        <td style="padding: 2px 0; vertical-align: top;">:</td>
-                        <td style="padding: 2px 0; vertical-align: top;">{{ $lampiranSurat }}</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 2px 0; vertical-align: top;">Hal</td>
-                        <td style="padding: 2px 0; vertical-align: top;">:</td>
-                        <td style="padding: 2px 0; vertical-align: top;"><strong>{{ $surat->perihal }}</strong></td>
-                        <td></td>
-                    </tr>
-                </table>
-
-                <!-- Penerima / Tujuan di Unit Ini -->
-                <div style="margin-bottom: 24px; font-size: 12pt;">
-                    <div>Yth.</div>
-                    <div style="font-weight: bold;">
-                        Pimpinan {{ $surat->unit ? $surat->unit->nama_unit : 'Unit Penerima' }}
-                    </div>
-                    <div>di</div>
-                    <div style="padding-left: 20px;">Tempat</div>
-                </div>
-
-                <!-- Isi Naskah Surat Sesuai Margin A4 Word -->
-                <div style="font-size: 12pt; line-height: 1.6; text-align: justify; margin-bottom: 30px; white-space: pre-wrap;">{{ $isiNaskah ?: 'Surat dinas telah diterima dan tercatat di sistem ARSITA.' }}</div>
-
-                <!-- Tanda Tangan Resmi Pengirim -->
-                <div style="display: flex; justify-content: flex-end; margin-top: 40px;">
-                    <div style="text-align: center; min-width: 240px; font-size: 12pt;">
-                        <div>{{ $unitPengirim ? $unitPengirim->nama_unit : ($surat->asal_surat ?: 'Pengirim') }},</div>
-                        <div style="font-weight: bold; margin-bottom: 65px;">
-                            @if($unitPengirim && $unitPengirim->level === 'rektorat')
-                                Rektor
-                            @elseif($unitPengirim && $unitPengirim->level === 'fakultas')
-                                Dekan
-                            @elseif($unitPengirim && $unitPengirim->level === 'prodi')
-                                Ketua Program Studi
-                            @else
-                                Pimpinan Pengirim
-                            @endif
-                        </div>
-                        <div style="font-weight: bold; text-decoration: underline;">
-                            {{ $pejabatTtd }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tembusan -->
-                @if($tembusanTeks)
-                <div style="margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 10pt; color: #334155;">
-                    <div style="font-weight: bold; margin-bottom: 4px;">Tembusan:</div>
-                    <div style="white-space: pre-wrap;">{{ $tembusanTeks }}</div>
-                </div>
                 @endif
             </div>
-        </div>
+        @elseif($skAsal)
+            {{-- Surat dari pengiriman otomatis internal tanpa scan fisik --}}
+            <div style="background: #e2e8f0; border-radius: 12px; padding: 24px 16px; display: flex; justify-content: center; overflow-x: auto;">
+                <div style="width: 210mm; min-height: 297mm; padding: 25.4mm; background: #ffffff; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 2px; font-family: 'Times New Roman', Times, serif; color: #000000; font-size: 12pt; line-height: 1.5; box-sizing: border-box; flex-shrink: 0;">
+                    @include('components.kop_surat', ['kop' => $kop, 'subUnit' => ($unitPengirim ? $unitPengirim->nama_unit : ($surat->asal_surat ?: null))])
+
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12pt; margin-bottom: 20px;">
+                        <tr>
+                            <td style="width: 80px; padding: 2px 0; vertical-align: top;">Nomor</td>
+                            <td style="width: 15px; padding: 2px 0; vertical-align: top;">:</td>
+                            <td style="padding: 2px 0; vertical-align: top;">
+                                <strong>{{ $surat->no_surat_asal ?: '___________' }}</strong>
+                            </td>
+                            <td style="text-align: right; width: 40%; padding: 2px 0; vertical-align: top;">
+                                Serang, {{ \App\Services\ArsitaService::tglIndo($surat->tanggal_surat) }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0; vertical-align: top;">Sifat</td>
+                            <td style="padding: 2px 0; vertical-align: top;">:</td>
+                            <td style="padding: 2px 0; vertical-align: top;">{{ ucfirst($sifatSurat) }}</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0; vertical-align: top;">Lampiran</td>
+                            <td style="padding: 2px 0; vertical-align: top;">:</td>
+                            <td style="padding: 2px 0; vertical-align: top;">{{ $lampiranSurat }}</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0; vertical-align: top;">Hal</td>
+                            <td style="padding: 2px 0; vertical-align: top;">:</td>
+                            <td style="padding: 2px 0; vertical-align: top;"><strong>{{ $surat->perihal }}</strong></td>
+                            <td></td>
+                        </tr>
+                    </table>
+
+                    <div style="margin-bottom: 24px; font-size: 12pt;">
+                        <div>Yth.</div>
+                        <div style="font-weight: bold;">
+                            Pimpinan {{ $surat->unit ? $surat->unit->nama_unit : 'Unit Penerima' }}
+                        </div>
+                        <div>di</div>
+                        <div style="padding-left: 20px;">Tempat</div>
+                    </div>
+
+                    <div style="font-size: 12pt; line-height: 1.6; text-align: justify; margin-bottom: 30px; white-space: pre-wrap;">{{ $isiNaskah ?: 'Surat dinas telah diterima dan tercatat di sistem ARSITA.' }}</div>
+
+                    <div style="display: flex; justify-content: flex-end; margin-top: 40px;">
+                        <div style="text-align: center; min-width: 240px; font-size: 12pt;">
+                            <div>{{ $unitPengirim ? $unitPengirim->nama_unit : ($surat->asal_surat ?: 'Pengirim') }},</div>
+                            <div style="font-weight: bold; margin-bottom: 65px;">
+                                @if($unitPengirim && $unitPengirim->level === 'rektorat')
+                                    Rektor
+                                @elseif($unitPengirim && $unitPengirim->level === 'fakultas')
+                                    Dekan
+                                @elseif($unitPengirim && $unitPengirim->level === 'lembaga')
+                                    Ketua Lembaga / Kepala
+                                @elseif($unitPengirim && in_array($unitPengirim->level, ['upt', 'pusat']))
+                                    Kepala {{ $unitPengirim->nama_unit }}
+                                @elseif($unitPengirim && $unitPengirim->level === 'prodi')
+                                    Ketua Program Studi
+                                @else
+                                    Pimpinan Pengirim
+                                @endif
+                            </div>
+                            <div style="font-weight: bold; text-decoration: underline;">
+                                {{ $pejabatTtd }}
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($tembusanTeks)
+                    <div style="margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 10pt; color: #334155;">
+                        <div style="font-weight: bold; margin-bottom: 4px;">Tembusan:</div>
+                        <div style="white-space: pre-wrap;">{{ $tembusanTeks }}</div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        @else
+            <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 36px 20px; text-align: center;">
+                <i class="bi bi-file-earmark-x" style="font-size: 42px; color: #94a3b8; display: block; margin-bottom: 10px;"></i>
+                <div style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 4px;">Berkas Scan Belum Diunggah</div>
+                <div style="font-size: 13px; color: #64748b;">Surat masuk ini dicatat tanpa mengunggah lampiran dokumen scan (PDF / JPG / PNG).</div>
+            </div>
+        @endif
     </div>
 
     <!-- Action Buttons -->
     <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-        @if(!$surat->asal_disposisi_id)
+        @if($surat->canBeEditedBy(Auth::user()))
             <a href="{{ route('surat-masuk.edit', $surat->id_surat_masuk) }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #059669; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;">
                 <i class="bi bi-pencil-fill"></i> Edit Data
             </a>
-        @else
-            <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; border-radius: 8px; font-size: 12.5px; font-weight: 600;">
-                <i class="bi bi-lock-fill"></i> Dokumen Resmi Disposisi (Terkunci dari Edit / Hapus)
+            <form action="{{ route('surat-masuk.destroy', $surat->id_surat_masuk) }}" method="POST" style="display: inline;" onsubmit="return confirm('Yakin hapus surat ini?')">
+                @csrf @method('DELETE')
+                <button type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                    <i class="bi bi-trash-fill"></i> Hapus
+                </button>
+            </form>
+        @elseif($surat->isDariUnitLain())
+            <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12.5px; font-weight: 600;">
+                <i class="bi bi-shield-lock-fill" style="color: #64748b;"></i> Naskah Resmi dari Unit Pengirim (Terkunci dari Edit / Hapus)
             </span>
         @endif
 
@@ -219,15 +266,6 @@
             @csrf
             <button type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #334155; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
                 <i class="bi bi-archive-fill"></i> Arsipkan
-            </button>
-        </form>
-        @endif
-
-        @if(!$surat->asal_disposisi_id)
-        <form action="{{ route('surat-masuk.destroy', $surat->id_surat_masuk) }}" method="POST" style="display: inline;" onsubmit="return confirm('Yakin hapus surat ini?')">
-            @csrf @method('DELETE')
-            <button type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
-                <i class="bi bi-trash-fill"></i> Hapus
             </button>
         </form>
         @endif

@@ -41,23 +41,39 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 13px;
         }
-        /* Standar Kertas A4 Word: 210mm x 297mm, Margin Normal Word 25.4mm (1 inch) */
+        /* Standar Kertas & Margin Dinamis dari Pengaturan Surat */
         .a4-page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 25.4mm;
+            width: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '215mm' : '210mm' }};
+            min-height: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '330mm' : '297mm' }};
+            padding-top: {{ $format['margin_atas'] ?? 25 }}mm;
+            padding-right: {{ $format['margin_kanan'] ?? 25 }}mm;
+            padding-bottom: {{ $format['margin_bawah'] ?? 25 }}mm;
+            padding-left: {{ $format['margin_kiri'] ?? 25 }}mm;
             background: #ffffff;
             box-shadow: 0 8px 16px rgba(0,0,0,0.35);
             position: relative;
-            font-size: 12pt;
-            line-height: 1.5;
+            font-family: {{ $format['jenis_font'] ?? "'Times New Roman', Times, serif" }};
+            font-size: {{ $format['ukuran_font'] ?? 12 }}pt;
+            line-height: {{ $format['spasi_baris'] ?? 1.5 }};
             color: #000000;
         }
         .kop-surat {
-            text-align: center;
+            display: flex;
+            align-items: center;
             border-bottom: 3px double #000;
             padding-bottom: 12px;
             margin-bottom: 20px;
+            gap: 16px;
+        }
+        .kop-logo {
+            width: 75px;
+            height: 75px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .kop-body {
+            flex: 1;
+            text-align: center;
         }
         .kop-instansi {
             font-size: 13pt;
@@ -146,9 +162,12 @@
                 box-shadow: none;
                 border: none;
                 margin: 0;
-                padding: 25.4mm;
-                width: 210mm;
-                min-height: 297mm;
+                padding-top: {{ $format['margin_atas'] ?? 25 }}mm;
+                padding-right: {{ $format['margin_kanan'] ?? 25 }}mm;
+                padding-bottom: {{ $format['margin_bawah'] ?? 25 }}mm;
+                padding-left: {{ $format['margin_kiri'] ?? 25 }}mm;
+                width: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '215mm' : '210mm' }};
+                min-height: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '330mm' : '297mm' }};
                 page-break-after: auto;
             }
         }
@@ -158,7 +177,7 @@
 <div class="page-wrapper">
     <div class="toolbar">
         <div>
-            <strong>Ukuran Kertas:</strong> A4 (210 x 297 mm) &bull; Margin Word Normal (2.54 cm)
+            <strong>Ukuran Kertas:</strong> {{ $format['ukuran_kertas'] ?? 'A4' }} &bull; Margin: {{ $format['margin_atas'] ?? 25 }}mm/{{ $format['margin_kanan'] ?? 25 }}mm/{{ $format['margin_bawah'] ?? 25 }}mm/{{ $format['margin_kiri'] ?? 25 }}mm
         </div>
         <div style="display: flex; gap: 8px;">
             <button onclick="window.print()" style="padding: 7px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
@@ -170,19 +189,10 @@
         </div>
     </div>
 
-    <!-- Lembar Fisik Kertas A4 Standar Word -->
+    <!-- Lembar Fisik Kertas Sesuai Pengaturan -->
     <div class="a4-page">
-        <!-- Kop Surat Resmi -->
-        <div class="kop-surat">
-            <div class="kop-instansi">KEMENTERIAN AGAMA REPUBLIK INDONESIA</div>
-            <div class="kop-univ">UIN SUNAN SUDJATI SERANG CILEGON</div>
-            @if($surat->unit)
-            <div class="kop-unit">{{ $surat->unit->nama_unit }}</div>
-            @endif
-            <div class="kop-alamat">
-                Jl. Raya Serang-Cilegon KM.3 Cinanggung Serang Banten 42116 · Telp: (0254) 200323 · Website: www.uinssc.ac.id
-            </div>
-        </div>
+        <!-- Kop Surat Resmi Dinamis -->
+        @include('components.kop_surat', ['kop' => $kop, 'subUnit' => $surat->unit?->nama_unit])
 
         <!-- Tabel Identitas Surat & Tanggal -->
         <table class="surat-header-table">
@@ -232,20 +242,38 @@
         <div class="isi-surat">{{ $surat->isi_surat }}</div>
 
         <!-- Tanda Tangan Resmi Pejabat -->
+        @php
+            $pejabatTtd = $surat->pejabat_penandatangan;
+            $sudahAcc = in_array($surat->status_surat, ['disetujui', 'terkirim', 'diarsipkan']);
+        @endphp
         <div class="ttd-section">
             <div class="ttd-box">
                 <div>{{ $surat->unit ? $surat->unit->nama_unit : 'UINSSC' }},</div>
-                <div class="ttd-jabatan">
+                <div class="ttd-jabatan" style="margin-bottom: 0;">
                     @if($surat->unit && $surat->unit->level === 'rektorat')
                         Rektor
                     @elseif($surat->unit && $surat->unit->level === 'fakultas')
                         Dekan
+                    @elseif($surat->unit && $surat->unit->level === 'lembaga')
+                        Ketua Lembaga / Kepala
+                    @elseif($surat->unit && in_array($surat->unit->level, ['upt', 'pusat']))
+                        Kepala {{ $surat->unit->nama_unit }}
                     @else
                         Ketua Program Studi
                     @endif
                 </div>
+
+                {{-- Gambar TTD Digital Transparan --}}
+                <div style="height: 75px; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
+                    @if($sudahAcc && $pejabatTtd && $pejabatTtd->tanda_tangan && file_exists(public_path('uploads/tanda_tangan/' . $pejabatTtd->tanda_tangan)))
+                        <img src="{{ asset('uploads/tanda_tangan/' . $pejabatTtd->tanda_tangan) }}" alt="Tanda Tangan" style="max-height: 75px; max-width: 190px; object-fit: contain;">
+                    @else
+                        <div style="height: 65px;"></div>
+                    @endif
+                </div>
+
                 <div class="ttd-nama">
-                    {{ $surat->pembuat ? ($surat->pembuat->nama ?? $surat->pembuat->name) : 'Pejabat Berwenang' }}
+                    {{ $pejabatTtd ? ($pejabatTtd->nama ?? $pejabatTtd->name) : ($surat->pembuat ? ($surat->pembuat->nama ?? $surat->pembuat->name) : 'Pejabat Berwenang') }}
                 </div>
             </div>
         </div>

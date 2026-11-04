@@ -81,7 +81,12 @@
             </thead>
             <tbody>
                 @forelse($results as $index => $r)
-                    <tr>
+                    @php
+                        $targetUrl = $r['tipe_surat'] === 'masuk'
+                            ? route('surat-masuk.show', $r['id_ref'])
+                            : route('surat-keluar.show', $r['id_ref']);
+                    @endphp
+                    <tr onclick="window.location='{{ $targetUrl }}'" style="cursor: pointer; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'" title="Klik untuk membuka detail surat">
                         <td style="text-align: center; color: var(--text-light); font-weight: 600;">{{ $index + 1 }}</td>
                         <td>
                             @if($r['tipe_surat'] === 'masuk')
@@ -95,13 +100,17 @@
                             @endif
                         </td>
                         <td style="word-break: break-word;">
-                            <strong style="color: var(--text-dark); display: block; line-height: 1.35; margin-bottom: 2px;">{{ $r['nomor_tampil'] }}</strong>
+                            <a href="{{ $targetUrl }}" style="color: #2563eb; text-decoration: none; font-weight: 700; display: block; line-height: 1.35; margin-bottom: 2px;">
+                                {{ $r['nomor_tampil'] }}
+                            </a>
                             <small style="color: var(--text-light); font-size: 11.5px; display: flex; align-items: center; gap: 4px;">
                                 <i class="bi bi-calendar3"></i> {{ \App\Services\ArsitaService::tglIndo($r['tanggal_dokumen']) }}
                             </small>
                         </td>
                         <td style="word-break: break-word;">
-                            <strong style="color: var(--text-dark); display: block; line-height: 1.35; margin-bottom: 3px;">{{ $r['perihal'] }}</strong>
+                            <a href="{{ $targetUrl }}" style="color: var(--text-dark); text-decoration: none; font-weight: 600; display: block; line-height: 1.35; margin-bottom: 3px;">
+                                {{ $r['perihal'] }}
+                            </a>
                             <div style="font-size: 12px; color: var(--text-medium); display: flex; align-items: center; gap: 5px;">
                                 <i class="bi {{ $r['tipe_surat'] === 'masuk' ? 'bi-geo-alt' : 'bi-send' }}" style="font-size: 11px; color: var(--text-light);"></i>
                                 <span>{{ $r['pihak_terkait'] ?: '-' }}</span>
@@ -114,11 +123,7 @@
                             {!! \App\Services\ArsitaService::badgeStatus($r['status_tampil']) !!}
                         </td>
                         <td style="text-align: center;">
-                            @if($r['tipe_surat'] === 'masuk')
-                                <a href="{{ route('surat-masuk.show', $r['id_ref']) }}" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 12px;"><i class="bi bi-eye"></i> Buka</a>
-                            @else
-                                <a href="{{ route('surat-keluar.show', $r['id_ref']) }}" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 12px;"><i class="bi bi-eye"></i> Buka</a>
-                            @endif
+                            <a href="{{ $targetUrl }}" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 12px;" onclick="event.stopPropagation();"><i class="bi bi-eye"></i> Buka</a>
                         </td>
                     </tr>
                 @empty

@@ -14,7 +14,7 @@
             <div class="card-title">Data Surat Masuk {{ $unit_nama }}</div>
             <div class="card-subtitle">Kelola dan catat seluruh surat dinas yang diterima unit</div>
         </div>
-        @if(in_array($role, ['admin_rektorat', 'staff_tu']))
+        @if(in_array($role, ['admin_rektorat', 'staff_tu', 'admin_unit']))
             <a href="{{ route('surat-masuk.create') }}" class="btn btn-primary">
                 <i class="bi bi-file-earmark-plus"></i> Catat Surat Masuk
             </a>
@@ -78,13 +78,20 @@
                             <b>{{ $sm->perihal }}</b>
                         </td>
                         <td>{{ $sm->kategori->nama_kategori ?? 'Umum' }}</td>
-                        <td>{!! \App\Services\ArsitaService::badgeStatus($sm->status_arsip) !!}</td>
+                        <td>
+                            {!! \App\Services\ArsitaService::badgeStatus($sm->status_arsip) !!}
+                            @if($sm->dibaca_pada)
+                                <br><small style="color: #059669; font-size: 11px; font-weight: 600;"><i class="bi bi-eye"></i> Sudah Dibaca</small>
+                            @else
+                                <br><small style="color: #64748b; font-size: 11px; font-style: italic;"><i class="bi bi-eye-slash"></i> Belum Dibaca</small>
+                            @endif
+                        </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('surat-masuk.show', $sm->id_surat_masuk) }}" class="btn btn-secondary btn-sm" title="Lihat Detail">
                                     Detail
                                 </a>
-                                @if(in_array($role, ['admin_rektorat', 'staff_tu']) && $sm->status_arsip !== 'diarsipkan' && !$sm->asal_disposisi_id)
+                                @if($sm->canBeEditedBy(Auth::user()) && $sm->status_arsip !== 'diarsipkan')
                                     <a href="{{ route('surat-masuk.edit', $sm->id_surat_masuk) }}" class="btn btn-secondary btn-sm" title="Edit Surat">
                                         <i class="bi bi-pencil"></i>
                                     </a>
@@ -97,9 +104,15 @@
                                     </form>
                                 @endif
                                 @if($role === 'pimpinan' && $sm->status_arsip !== 'diarsipkan')
-                                    <a href="{{ route('disposisi.create', $sm->id_surat_masuk) }}" class="btn btn-primary btn-sm" title="Buat Disposisi">
-                                        Disposisi
-                                    </a>
+                                    @if($sm->dibaca_pada)
+                                        <a href="{{ route('disposisi.create', $sm->id_surat_masuk) }}" class="btn btn-primary btn-sm" title="Buat Lembar Disposisi">
+                                            Disposisi
+                                        </a>
+                                    @else
+                                        <a href="{{ route('surat-masuk.show', $sm->id_surat_masuk) }}" class="btn btn-secondary btn-sm" style="color: #64748b; border-style: dashed;" title="Buka dan baca surat terlebih dahulu sebelum mendisposisikan">
+                                            <i class="bi bi-eye"></i> Baca Dulu
+                                        </a>
+                                    @endif
                                 @endif
                             </div>
                         </td>

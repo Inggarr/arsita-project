@@ -62,11 +62,20 @@
         </select>
     </div>
     <div>
-        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Sifat Surat *</label>
+        <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Klasifikasi Keamanan / Sifat Surat *</label>
         <select name="sifat" id="form_sifat" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fff;">
-            <option value="biasa" {{ old('sifat') === 'biasa' ? 'selected' : '' }}>Biasa</option>
-            <option value="penting" {{ old('sifat') === 'penting' ? 'selected' : '' }}>Penting</option>
-            <option value="rahasia" {{ old('sifat') === 'rahasia' ? 'selected' : '' }}>Rahasia</option>
+            @if(isset($sifatList) && $sifatList->count())
+                @foreach($sifatList as $sf)
+                    <option value="{{ strtolower($sf->nama_sifat) }}" {{ old('sifat') === strtolower($sf->nama_sifat) ? 'selected' : '' }}>
+                        {{ $sf->nama_sifat }} (Kode: {{ $sf->kode_sifat }})
+                    </option>
+                @endforeach
+            @else
+                <option value="biasa" {{ old('sifat') === 'biasa' ? 'selected' : '' }}>Biasa (Kode: B)</option>
+                <option value="terbatas" {{ old('sifat') === 'terbatas' ? 'selected' : '' }}>Terbatas (Kode: T)</option>
+                <option value="rahasia" {{ old('sifat') === 'rahasia' ? 'selected' : '' }}>Rahasia (Kode: R)</option>
+                <option value="sangat_rahasia" {{ old('sifat') === 'sangat_rahasia' ? 'selected' : '' }}>Sangat Rahasia (Kode: SR)</option>
+            @endif
         </select>
     </div>
     <div>
@@ -147,23 +156,10 @@
     </div>
 
     <div style="background: #e2e8f0; border-radius: 12px; padding: 24px 16px; display: flex; justify-content: center; overflow-x: auto;">
-        <!-- Kertas Fisik A4 Word -->
-        <div style="width: 210mm; min-height: 297mm; padding: 25.4mm; background: #ffffff; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 2px; font-family: 'Times New Roman', Times, serif; color: #000000; font-size: 12pt; line-height: 1.5; box-sizing: border-box; flex-shrink: 0;">
-            <!-- Kop Surat Resmi -->
-            <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px;">
-                <div style="font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
-                    KEMENTERIAN AGAMA REPUBLIK INDONESIA
-                </div>
-                <div style="font-size: 15pt; font-weight: bold; text-transform: uppercase; color: #1e3a8a; margin: 2px 0;">
-                    UIN SUNAN SUDJATI SERANG CILEGON
-                </div>
-                <div id="pv_unit" style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 2px;">
-                    {{ $user->unit ? $user->unit->nama_unit : 'UNIVERSITAS' }}
-                </div>
-                <div style="font-size: 9pt; color: #334155; margin-top: 4px; font-style: italic;">
-                    Jl. Raya Serang-Cilegon KM.3 Cinanggung Serang Banten 42116 · Telp: (0254) 200323 · Website: www.uinssc.ac.id
-                </div>
-            </div>
+        <!-- Kertas Fisik Sesuai Pengaturan Sistem -->
+        <div style="width: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '215mm' : '210mm' }}; min-height: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '330mm' : '297mm' }}; padding-top: {{ $format['margin_atas'] ?? 25 }}mm; padding-right: {{ $format['margin_kanan'] ?? 25 }}mm; padding-bottom: {{ $format['margin_bawah'] ?? 25 }}mm; padding-left: {{ $format['margin_kiri'] ?? 25 }}mm; background: #ffffff; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 2px; font-family: {{ $format['jenis_font'] ?? "'Times New Roman', Times, serif" }}; color: #000000; font-size: {{ $format['ukuran_font'] ?? 12 }}pt; line-height: {{ $format['spasi_baris'] ?? 1.5 }}; box-sizing: border-box; flex-shrink: 0;">
+            <!-- Kop Surat Resmi Dinamis -->
+            @include('components.kop_surat', ['kop' => $kop, 'subUnit' => ($user->unit ? $user->unit->nama_unit : null)])
 
             <!-- Tabel Identitas Nomor, Sifat, Lampiran, Hal & Tanggal -->
             <table style="width: 100%; border-collapse: collapse; font-size: 12pt; margin-bottom: 20px;">
@@ -217,6 +213,10 @@
                             Rektor
                         @elseif($user->unit && $user->unit->level === 'fakultas')
                             Dekan
+                        @elseif($user->unit && $user->unit->level === 'lembaga')
+                            Ketua Lembaga / Kepala
+                        @elseif($user->unit && in_array($user->unit->level, ['upt', 'pusat']))
+                            Kepala {{ $user->unit->nama_unit }}
                         @else
                             Ketua Program Studi
                         @endif
@@ -322,7 +322,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const uLevel = opt.getAttribute('data-level');
                 pvUnit.textContent = uName.toUpperCase();
                 pvTtdUnit.textContent = uName + ',';
-                pvTtdJabatan.textContent = uLevel === 'rektorat' ? 'Rektor' : (uLevel === 'fakultas' ? 'Dekan' : 'Ketua Program Studi');
+                let jab = 'Ketua Program Studi';
+                if (uLevel === 'rektorat') { jab = 'Rektor'; }
+                else if (uLevel === 'fakultas') { jab = 'Dekan'; }
+                else if (uLevel === 'lembaga') { jab = 'Ketua Lembaga / Kepala'; }
+                else if (uLevel === 'upt' || uLevel === 'pusat') { jab = 'Kepala ' + uName; }
+                pvTtdJabatan.textContent = jab;
             }
         }
     }

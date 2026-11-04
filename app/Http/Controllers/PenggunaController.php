@@ -7,6 +7,7 @@ use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class PenggunaController extends Controller
 {
@@ -23,15 +24,17 @@ class PenggunaController extends Controller
     {
         $request->validate([
             'nama' => 'required|string|max:100',
+            'kode_jabatan' => 'nullable|string|max:50',
             'username' => 'required|string|max:50|unique:users,username',
             'email' => 'nullable|email|unique:users,email',
-            'password' => 'required|string|min:6',
+            'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'id_role' => 'required|exists:roles,id_role',
             'id_unit' => 'required|exists:units,id_unit',
         ]);
 
         User::create([
             'nama' => $request->nama,
+            'kode_jabatan' => $request->kode_jabatan ? trim($request->kode_jabatan) : null,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
@@ -58,15 +61,17 @@ class PenggunaController extends Controller
 
         $request->validate([
             'nama' => 'required|string|max:100',
+            'kode_jabatan' => 'nullable|string|max:50',
             'username' => 'required|string|max:50|unique:users,username,'.$user->id_user.',id_user',
             'email' => 'required|email|unique:users,email,'.$user->id_user.',id_user',
-            'password' => 'nullable|string|min:6',
+            'password' => ['nullable', 'string', Password::min(8)->letters()->numbers()],
             'id_role' => 'required|exists:roles,id_role',
             'id_unit' => 'required|exists:units,id_unit',
             'status' => 'required|in:aktif,nonaktif',
         ]);
 
-        $data = $request->only(['nama', 'username', 'email', 'id_role', 'id_unit', 'status']);
+        $data = $request->only(['nama', 'kode_jabatan', 'username', 'email', 'id_role', 'id_unit', 'status']);
+        $data['kode_jabatan'] = $request->kode_jabatan ? trim($request->kode_jabatan) : null;
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
         }

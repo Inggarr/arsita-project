@@ -18,8 +18,20 @@
                 @endif
             </p>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            {!! \App\Services\ArsitaService::badgeStatus($surat->status_surat) !!}
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            @if($surat->status_surat === 'terkirim')
+                @if($surat->status_penerimaan === 'sudah_dibaca')
+                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 9999px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;" title="Dibaca oleh {{ $surat->penerima?->name ?? 'Penerima' }} pada {{ $surat->diterima_pada?->format('d/m/Y H:i') }}">
+                        <i class="bi bi-check2-all" style="font-size: 14px;"></i> Sudah Dibaca Penerima
+                    </span>
+                @else
+                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 9999px; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe;" title="Surat telah masuk ke unit tujuan dan menunggu dibuka">
+                        <i class="bi bi-check2" style="font-size: 14px;"></i> Terkirim (Menunggu Dibaca)
+                    </span>
+                @endif
+            @else
+                {!! \App\Services\ArsitaService::badgeStatus($surat->status_surat) !!}
+            @endif
             {!! \App\Services\ArsitaService::badgeStatus($surat->sifat) !!}
         </div>
     </div>
@@ -77,6 +89,13 @@
                 ['Tanggal Draft', \App\Services\ArsitaService::tglIndo($surat->tanggal_draft)],
                 ['Dibuat Oleh', $surat->pembuat ? $surat->pembuat->name : '—'],
             ];
+
+            if ($surat->status_surat === 'terkirim') {
+                $statusPenerimaanTeks = $surat->status_penerimaan === 'sudah_dibaca'
+                    ? 'Sudah Dibuka & Dibaca' . ($surat->diterima_pada ? ' (' . $surat->diterima_pada->format('d/m/Y H:i') . ')' : '') . ($surat->penerima ? ' oleh ' . $surat->penerima->name : '')
+                    : 'Terkirim ke Surat Masuk Tujuan (Belum Dibuka)';
+                $rows[] = ['Status Penerima', $statusPenerimaanTeks];
+            }
         @endphp
         @foreach($rows as $i => $row)
         <div style="padding: 12px 16px; {{ $i % 2 == 0 ? 'background: #f8fafc;' : '' }} border-bottom: 1px solid #f1f5f9;">
@@ -98,25 +117,10 @@
         </div>
 
         <div style="background: #e2e8f0; border-radius: 12px; padding: 24px 16px; display: flex; justify-content: center; overflow-x: auto;">
-            <!-- Lembar Fisik Kertas A4 Word: Lebar 210mm, Min-Tinggi 297mm, Margin Normal Word 2.54cm (25.4mm) -->
-            <div style="width: 210mm; min-height: 297mm; padding: 25.4mm; background: #ffffff; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 2px; font-family: 'Times New Roman', Times, serif; color: #000000; font-size: 12pt; line-height: 1.5; box-sizing: border-box; flex-shrink: 0;">
-                <!-- Kop Surat Resmi -->
-                <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px;">
-                    <div style="font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
-                        KEMENTERIAN AGAMA REPUBLIK INDONESIA
-                    </div>
-                    <div style="font-size: 15pt; font-weight: bold; text-transform: uppercase; color: #1e3a8a; margin: 2px 0;">
-                        UIN SUNAN SUDJATI SERANG CILEGON
-                    </div>
-                    @if($surat->unit)
-                    <div style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 2px;">
-                        {{ $surat->unit->nama_unit }}
-                    </div>
-                    @endif
-                    <div style="font-size: 9pt; color: #334155; margin-top: 4px; font-style: italic;">
-                        Jl. Raya Serang-Cilegon KM.3 Cinanggung Serang Banten 42116 · Telp: (0254) 200323 · Website: www.uinssc.ac.id
-                    </div>
-                </div>
+            <!-- Lembar Fisik Kertas Sesuai Pengaturan Sistem -->
+            <div style="width: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '215mm' : '210mm' }}; min-height: {{ ($format['ukuran_kertas'] ?? 'A4') === 'F4' ? '330mm' : '297mm' }}; padding-top: {{ $format['margin_atas'] ?? 25 }}mm; padding-right: {{ $format['margin_kanan'] ?? 25 }}mm; padding-bottom: {{ $format['margin_bawah'] ?? 25 }}mm; padding-left: {{ $format['margin_kiri'] ?? 25 }}mm; background: #ffffff; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 2px; font-family: {{ $format['jenis_font'] ?? "'Times New Roman', Times, serif" }}; color: #000000; font-size: {{ $format['ukuran_font'] ?? 12 }}pt; line-height: {{ $format['spasi_baris'] ?? 1.5 }}; box-sizing: border-box; flex-shrink: 0;">
+                <!-- Kop Surat Resmi Dinamis -->
+                @include('components.kop_surat', ['kop' => $kop, 'subUnit' => $surat->unit?->nama_unit])
 
                 <!-- Tabel Identitas Nomor, Sifat, Lampiran, Hal & Tanggal -->
                 <table style="width: 100%; border-collapse: collapse; font-size: 12pt; margin-bottom: 20px;">
@@ -166,20 +170,38 @@
                 <div style="font-size: 12pt; line-height: 1.6; text-align: justify; margin-bottom: 30px; white-space: pre-wrap;">{{ $surat->isi_surat }}</div>
 
                 <!-- Tanda Tangan Resmi (Posisi Kanan Bawah Standar Word) -->
+                @php
+                    $pejabatTtd = $surat->pejabat_penandatangan;
+                    $sudahAcc = in_array($surat->status_surat, ['disetujui', 'terkirim', 'diarsipkan']);
+                @endphp
                 <div style="display: flex; justify-content: flex-end; margin-top: 40px;">
                     <div style="text-align: center; min-width: 240px; font-size: 12pt;">
                         <div>{{ $surat->unit ? $surat->unit->nama_unit : 'UINSSC' }},</div>
-                        <div style="font-weight: bold; margin-bottom: 65px;">
+                        <div style="font-weight: bold; margin-bottom: 0;">
                             @if($surat->unit && $surat->unit->level === 'rektorat')
                                 Rektor
                             @elseif($surat->unit && $surat->unit->level === 'fakultas')
                                 Dekan
+                            @elseif($surat->unit && $surat->unit->level === 'lembaga')
+                                Ketua Lembaga / Kepala
+                            @elseif($surat->unit && in_array($surat->unit->level, ['upt', 'pusat']))
+                                Kepala {{ $surat->unit->nama_unit }}
                             @else
                                 Ketua Program Studi
                             @endif
                         </div>
+
+                        {{-- Gambar TTD Digital Transparan --}}
+                        <div style="height: 75px; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
+                            @if($sudahAcc && $pejabatTtd && $pejabatTtd->tanda_tangan && file_exists(public_path('uploads/tanda_tangan/' . $pejabatTtd->tanda_tangan)))
+                                <img src="{{ asset('uploads/tanda_tangan/' . $pejabatTtd->tanda_tangan) }}" alt="Tanda Tangan Digital" style="max-height: 75px; max-width: 190px; object-fit: contain;">
+                            @else
+                                <div style="height: 65px;"></div>
+                            @endif
+                        </div>
+
                         <div style="font-weight: bold; text-decoration: underline;">
-                            {{ $surat->pembuat ? ($surat->pembuat->nama ?? $surat->pembuat->name) : 'Pejabat Berwenang' }}
+                            {{ $pejabatTtd ? ($pejabatTtd->nama ?? $pejabatTtd->name) : ($surat->pembuat ? ($surat->pembuat->nama ?? $surat->pembuat->name) : 'Pejabat Berwenang') }}
                         </div>
                     </div>
                 </div>

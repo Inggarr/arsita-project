@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PermohonanAccSuratMail;
 use App\Models\AccSuratKeluar;
 use App\Models\Notifikasi;
+use App\Models\PengaturanSurat;
 use App\Models\SuratKeluar;
 use App\Models\SuratMasuk;
+use App\Models\User;
 use App\Services\ArsitaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class PersetujuanController extends Controller
 {
@@ -63,8 +68,10 @@ class PersetujuanController extends Controller
         $acc = AccSuratKeluar::with(['suratKeluar.unit', 'suratKeluar.jenisSurat', 'suratKeluar.pembuat', 'suratKeluar.nomorSurat', 'suratKeluar.persetujuan'])
             ->findOrFail($id);
         $user = Auth::user();
+        $kop = PengaturanSurat::getKop();
+        $format = PengaturanSurat::getFormat();
 
-        return view('persetujuan.show', compact('acc', 'user'));
+        return view('persetujuan.show', compact('acc', 'user', 'kop', 'format'));
     }
 
     public function proses(Request $request, $id)
@@ -182,6 +189,7 @@ class PersetujuanController extends Controller
 
                 $surat->update([
                     'status_surat' => 'terkirim',
+                    'status_penerimaan' => 'terkirim',
                 ]);
 
                 return redirect()->route('persetujuan.index')->with('success', "Surat telah disetujui penuh! Nomor surat diterbitkan: {$nomorSurat}, dan surat telah otomatis masuk ke Surat Masuk unit tujuan.");
@@ -194,6 +202,46 @@ class PersetujuanController extends Controller
             return redirect()->route('persetujuan.index')->with('success', "Surat telah disetujui penuh pada tahap final! Nomor surat otomatis diterbitkan: {$nomorSurat}");
         }
 
+        // Masih ada tahap berikutnya — kirim email ke pimpinan tahap selanjutnya
+        $this->kirimEmailTahapBerikutnya($surat->fresh(['persetujuan', 'unit']));
+
         return redirect()->route('persetujuan.index')->with('success', "Tahap ke-{$tahapAktif->tahap_ke} berhasil disetujui. Melanjutkan ke tahap berikutnya.");
+    }
+
+    /**
+     * Kirim notifikasi email permohonan ACC ke pimpinan pada tahap berikutnya yang menunggu.
+     */
+    private function kirimEmailTahapBerikutnya(SuratKeluar $surat): void
+    {
+        try {
+            $nextAcc = $surat->persetujuan()
+                ->where('status', 'menunggu')
+                ->orderBy('tahap_ke', 'asc')
+                ->first();
+
+            if (! $nextAcc) {
+                return;
+            }
+
+            $pimpinan = null;
+
+            if ($nextAcc->disetujui_oleh) {
+                $pimpinan = User::find($nextAcc->disetujui_oleh);
+            }
+
+            if (! $pimpinan && $surat->id_unit) {
+                $pimpinan = User::where('id_unit', $surat->id_unit)
+                    ->where('id_role', 4)
+                    ->first();
+            }
+
+            if (! $pimpinan || ! $pimpinan->email) {
+                return;
+            }
+
+            Mail::to($pimpinan->email)->send(new PermohonanAccSuratMail($surat, $pimpinan, $nextAcc));
+        } catch (\Throwable $e) {
+            Log::error('Gagal mengirim email permohonan ACC tahap berikutnya: '.$e->getMessage());
+        }
     }
 }

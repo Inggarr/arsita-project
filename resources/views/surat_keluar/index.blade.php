@@ -14,7 +14,7 @@
             <div class="card-title">Daftar Surat Keluar {{ $unit_nama }}</div>
             <div class="card-subtitle">Pengelolaan draft, persetujuan (ACC), penomoran otomatis, dan cetak dokumen resmi</div>
         </div>
-        @if(in_array($role, ['admin_rektorat', 'staff_tu']))
+        @if(in_array($role, ['admin_rektorat', 'staff_tu', 'admin_unit']))
             <a href="{{ route('surat-keluar.create') }}" class="btn btn-primary">
                 <i class="bi bi-pencil-square"></i> Buat Surat Keluar Baru
             </a>
@@ -82,7 +82,21 @@
                             <small class="text-muted">Pembuat: {{ $sk->pembuat->nama ?? $sk->pembuat->name ?? '-' }}</small>
                         </td>
                         <td>{!! \App\Services\ArsitaService::badgeStatus($sk->sifat ?? 'biasa') !!}</td>
-                        <td>{!! \App\Services\ArsitaService::badgeStatus($sk->status_surat) !!}</td>
+                        <td>
+                            @if($sk->status_surat === 'terkirim')
+                                @if($sk->status_penerimaan === 'sudah_dibaca')
+                                    <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;" title="Dibaca {{ $sk->diterima_pada?->format('d/m/Y H:i') }}">
+                                        <i class="bi bi-check2-all"></i> Dibaca Penerima
+                                    </span>
+                                @else
+                                    <span class="badge" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe;" title="Surat telah masuk ke unit tujuan">
+                                        <i class="bi bi-check2"></i> Terkirim
+                                    </span>
+                                @endif
+                            @else
+                                {!! \App\Services\ArsitaService::badgeStatus($sk->status_surat) !!}
+                            @endif
+                        </td>
                         <td>
                             <div class="d-flex gap-2 flex-wrap">
                                 <a href="{{ route('surat-keluar.show', $sk->id_surat_keluar) }}" class="btn btn-secondary btn-sm">Detail</a>

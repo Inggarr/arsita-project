@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ARSITA - Sistem Informasi Persuratan dan Disposisi UINSSC">
     <title>@yield('title', 'Dashboard') — ARSITA</title>
+    <link rel="icon" type="image/png" href="{{ asset('assets/img/logo.png') }}">
+    <!-- Prevent Sidebar Transition Flash on Page Load -->
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('arsita_sidebar_collapsed') === 'true') {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <!-- Bootstrap Icons (Lokal) -->
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap-icons.min.css') }}">
     <!-- ARSITA Design System -->
@@ -54,7 +65,7 @@
     }
 
     $badge_sm_baru = 0;
-    if (in_array($role, ['admin_rektorat', 'staff_tu', 'pimpinan'])) {
+    if (in_array($role, ['admin_rektorat', 'staff_tu', 'pimpinan', 'admin_unit'])) {
         if ($role === 'admin_rektorat') {
             $badge_sm_baru = \App\Models\SuratMasuk::where('status_arsip', 'belum_ditinjau')->count();
         } else {
@@ -80,34 +91,39 @@
 <!-- Sidebar Identik Asli Native -->
 <aside class="sidebar">
     <div class="sidebar-brand">
-        <div class="sidebar-logo">
-            <i class="bi bi-shield-check"></i>
+        <div style="display: flex; align-items: center; gap: var(--space-3); overflow: hidden; min-width: 0; flex: 1;">
+            <div class="sidebar-logo" style="background: transparent; box-shadow: none; padding: 2px;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Logo ARSITA" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <div class="sidebar-brand-text">
+                <div class="sidebar-title">ARSITA</div>
+                <div class="sidebar-sub">Disposisi &amp; Persuratan</div>
+            </div>
         </div>
-        <div>
-            <div class="sidebar-title">ARSITA</div>
-            <div class="sidebar-sub">Disposisi &amp; Persuratan</div>
-        </div>
+        <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Buka / Tutup Sidebar" aria-label="Toggle Sidebar">
+            <i class="bi bi-list"></i>
+        </button>
     </div>
 
     <div class="sidebar-menu">
         <!-- Menu Utama -->
         <div class="menu-category">Utama</div>
-        <a href="{{ route('dashboard') }}" class="menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+        <a href="{{ route('dashboard') }}" class="menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" data-tooltip="Dashboard" title="Dashboard">
             <i class="bi bi-grid-1x2-fill"></i>
             <span class="menu-label">Dashboard</span>
         </a>
 
         <!-- Persuratan (Surat Masuk & Keluar) -->
-        @if(in_array($role, ['admin_rektorat', 'staff_tu', 'pimpinan']))
+        @if(in_array($role, ['admin_rektorat', 'staff_tu', 'pimpinan', 'admin_unit']))
             <div class="menu-category">Persuratan</div>
-            <a href="{{ route('surat-masuk.index') }}" class="menu-item {{ request()->routeIs('surat-masuk.*') ? 'active' : '' }}" title="Surat Masuk">
+            <a href="{{ route('surat-masuk.index') }}" class="menu-item {{ request()->routeIs('surat-masuk.*') ? 'active' : '' }}" data-tooltip="Surat Masuk" title="Surat Masuk">
                 <i class="bi bi-inbox-fill"></i>
                 <span class="menu-label">Surat Masuk</span>
                 @if($badge_sm_baru > 0)
                     <span class="menu-badge" title="{{ $badge_sm_baru }} belum ditinjau">{{ $badge_sm_baru }}</span>
                 @endif
             </a>
-            <a href="{{ route('surat-keluar.index') }}" class="menu-item {{ request()->routeIs('surat-keluar.*') ? 'active' : '' }}" title="Surat Keluar">
+            <a href="{{ route('surat-keluar.index') }}" class="menu-item {{ request()->routeIs('surat-keluar.*') ? 'active' : '' }}" data-tooltip="Surat Keluar" title="Surat Keluar">
                 <i class="bi bi-send-fill"></i>
                 <span class="menu-label">Surat Keluar</span>
                 @if($badge_sk_revisi > 0)
@@ -119,23 +135,23 @@
         <!-- Disposisi -->
         @php 
             $can_see_disp_masuk = in_array($role, ['staff_tu', 'pimpinan', 'admin_rektorat', 'admin_unit']);
-            $can_see_disp_riwayat = in_array($role, ['pimpinan', 'admin_rektorat']);
+            $can_see_disp_keluar = in_array($role, ['staff_tu', 'pimpinan', 'admin_rektorat', 'admin_unit']);
         @endphp
-        @if($can_see_disp_masuk || $can_see_disp_riwayat)
+        @if($can_see_disp_masuk || $can_see_disp_keluar)
             <div class="menu-category">Disposisi</div>
             @if($can_see_disp_masuk)
-                <a href="{{ route('disposisi.index') }}" class="menu-item {{ request()->routeIs('disposisi.index') || request()->routeIs('disposisi.tindak-lanjut') ? 'active' : '' }}" title="Disposisi Masuk">
-                    <i class="bi bi-card-checklist"></i>
+                <a href="{{ route('disposisi.index') }}" class="menu-item {{ request()->routeIs('disposisi.index') || request()->routeIs('disposisi.tindak-lanjut') ? 'active' : '' }}" data-tooltip="Disposisi Masuk" title="Disposisi Masuk">
+                    <i class="bi bi-inbox-fill"></i>
                     <span class="menu-label">Disposisi Masuk</span>
                     @if($badge_disp_masuk > 0)
                         <span class="menu-badge" title="{{ $badge_disp_masuk }} belum diproses">{{ $badge_disp_masuk }}</span>
                     @endif
                 </a>
             @endif
-            @if($can_see_disp_riwayat)
-                <a href="{{ route('disposisi.riwayat') }}" class="menu-item {{ request()->routeIs('disposisi.riwayat') || request()->routeIs('disposisi.create') ? 'active' : '' }}" title="Riwayat Disposisi Dibuat">
+            @if($can_see_disp_keluar)
+                <a href="{{ route('disposisi.riwayat') }}" class="menu-item {{ request()->routeIs('disposisi.riwayat') || request()->routeIs('disposisi.create') ? 'active' : '' }}" data-tooltip="Disposisi Keluar" title="Disposisi Keluar">
                     <i class="bi bi-send-check-fill"></i>
-                    <span class="menu-label">Riwayat Disposisi</span>
+                    <span class="menu-label">Disposisi Keluar</span>
                 </a>
             @endif
         @endif
@@ -143,7 +159,7 @@
         <!-- Persetujuan ACC -->
         @if(in_array($role, ['pimpinan', 'admin_rektorat']))
             <div class="menu-category">Persetujuan</div>
-            <a href="{{ route('persetujuan.index') }}" class="menu-item {{ request()->routeIs('persetujuan.*') ? 'active' : '' }}" title="Persetujuan Surat (ACC)">
+            <a href="{{ route('persetujuan.index') }}" class="menu-item {{ request()->routeIs('persetujuan.*') ? 'active' : '' }}" data-tooltip="Persetujuan Surat (ACC)" title="Persetujuan Surat (ACC)">
                 <i class="bi bi-patch-check-fill"></i>
                 <span class="menu-label">Persetujuan ACC</span>
                 @if($badge_acc > 0)
@@ -154,39 +170,35 @@
 
         <!-- Arsip & Laporan -->
         <div class="menu-category">Arsip &amp; Laporan</div>
-        <a href="{{ route('arsip.index') }}" class="menu-item {{ request()->routeIs('arsip.*') ? 'active' : '' }}" title="Arsip &amp; Pencarian">
+        <a href="{{ route('arsip.index') }}" class="menu-item {{ request()->routeIs('arsip.*') ? 'active' : '' }}" data-tooltip="Arsip &amp; Pencarian" title="Arsip &amp; Pencarian">
             <i class="bi bi-archive-fill"></i>
             <span class="menu-label">Arsip &amp; Pencarian</span>
         </a>
-        <a href="{{ route('laporan.index') }}" class="menu-item {{ request()->routeIs('laporan.*') ? 'active' : '' }}" title="Rekap &amp; Laporan">
+        <a href="{{ route('laporan.index') }}" class="menu-item {{ request()->routeIs('laporan.*') ? 'active' : '' }}" data-tooltip="Rekap &amp; Laporan" title="Rekap &amp; Laporan">
             <i class="bi bi-file-earmark-bar-graph-fill"></i>
             <span class="menu-label">Rekap &amp; Laporan</span>
         </a>
-        <a href="{{ route('master.format-nomor') }}" class="menu-item {{ request()->routeIs('master.format-nomor*') ? 'active' : '' }}" title="Pengaturan Penomoran Surat">
-            <i class="bi bi-hash"></i>
-            <span class="menu-label">Penomoran Surat</span>
-        </a>
+        <!-- Pengaturan Sistem (Admin Rektorat, Admin Unit & Staff TU) -->
+        @if(in_array($role, ['admin_rektorat', 'admin_unit', 'staff_tu']))
+            <div class="menu-category">Pengaturan</div>
+            <a href="{{ route('pengaturan.index') }}" class="menu-item {{ request()->routeIs('pengaturan.*') ? 'active' : '' }}" data-tooltip="Pengaturan Sistem" title="Pengaturan Sistem">
+                <i class="bi bi-gear-fill"></i>
+                <span class="menu-label">Pengaturan Sistem</span>
+            </a>
+        @endif
 
         <!-- Master Data (Admin Rektorat) -->
         @if($role === 'admin_rektorat')
             <div class="menu-category">Master Data</div>
-            <a href="{{ route('master.unit') }}" class="menu-item {{ request()->routeIs('master.unit*') ? 'active' : '' }}">
+            <a href="{{ route('pengaturan.index', ['tab' => 'unit-organisasi']) }}" class="menu-item {{ request()->fullUrlIs('*tab=unit-organisasi*') ? 'active' : '' }}" data-tooltip="Data Unit Kampus" title="Data Unit Kampus">
                 <i class="bi bi-diagram-3-fill"></i>
                 <span class="menu-label">Data Unit Kampus</span>
             </a>
-            <a href="{{ route('master.kategori') }}" class="menu-item {{ request()->routeIs('master.kategori*') ? 'active' : '' }}">
+            <a href="{{ route('pengaturan.index', ['tab' => 'kategori-jenis']) }}" class="menu-item {{ request()->fullUrlIs('*tab=kategori-jenis*') ? 'active' : '' }}" data-tooltip="Kategori &amp; Jenis Surat" title="Kategori &amp; Jenis Surat">
                 <i class="bi bi-tags-fill"></i>
-                <span class="menu-label">Kategori Surat</span>
+                <span class="menu-label">Kategori &amp; Jenis Surat</span>
             </a>
-            <a href="{{ route('master.jenis') }}" class="menu-item {{ request()->routeIs('master.jenis*') ? 'active' : '' }}">
-                <i class="bi bi-file-earmark-text-fill"></i>
-                <span class="menu-label">Jenis Surat</span>
-            </a>
-            <a href="{{ route('master.format-nomor') }}" class="menu-item {{ request()->routeIs('master.format-nomor*') ? 'active' : '' }}">
-                <i class="bi bi-hash"></i>
-                <span class="menu-label">Format Nomor Otomatis</span>
-            </a>
-            <a href="{{ route('pengguna.index') }}" class="menu-item {{ request()->routeIs('pengguna.*') ? 'active' : '' }}">
+            <a href="{{ route('pengguna.index') }}" class="menu-item {{ request()->routeIs('pengguna.*') ? 'active' : '' }}" data-tooltip="Kelola Pengguna" title="Kelola Pengguna">
                 <i class="bi bi-people-fill"></i>
                 <span class="menu-label">Kelola Pengguna</span>
             </a>
@@ -195,15 +207,25 @@
 
     <!-- Sidebar Footer -->
     <div class="sidebar-footer">
-        <div class="user-badge">
-            <div class="user-avatar">
+        <a href="{{ route('profil.index') }}" class="user-badge" style="text-decoration: none; cursor: pointer; transition: background 0.15s ease;" title="Kelola Profil & Tanda Tangan">
+            <div class="user-avatar" style="position: relative;">
                 <i class="bi bi-person-fill"></i>
+                @if($user->isPimpinan() || $user->isAdminRektorat())
+                    @if($user->tanda_tangan)
+                        <span style="position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #16a34a; border: 2px solid #1e293b;" title="TTD Aktif"></span>
+                    @else
+                        <span style="position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #dc2626; border: 2px solid #1e293b;" title="TTD Belum Diisi"></span>
+                    @endif
+                @endif
             </div>
             <div class="user-info">
                 <div class="user-name" title="{{ $user_name }}">{{ $user_name }}</div>
-                <div class="user-role">{{ ucwords(str_replace('_', ' ', $role)) }}</div>
+                <div class="user-role" style="display: flex; align-items: center; gap: 4px;">
+                    <span>{{ ucwords(str_replace('_', ' ', $role)) }}</span>
+                    <i class="bi bi-gear-fill" style="font-size: 10px; opacity: 0.7;"></i>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </aside>
 
@@ -228,9 +250,9 @@
                         <div class="notif-header-title" style="font-size: 13.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                             <i class="bi bi-bell" style="font-size: 16px; color: #1e40af;"></i> Notifikasi
                         </div>
-                        <button type="button" class="notif-header-action" id="notif-mark-all-btn" style="font-size: 11.5px; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; font-weight: 600; padding: 4px 10px; transition: all 0.15s ease; white-space: nowrap;">
-                            <i class="bi bi-check2-all"></i> Tandai semua dibaca
-                        </button>
+                        <span style="font-size: 11px; color: #64748b; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 600;">
+                            Hilang saat ditindaklanjuti
+                        </span>
                     </div>
 
                     <!-- List Notifikasi -->
@@ -251,6 +273,13 @@
                 <span>{{ $user_unit }} ({{ $kode_unit }})</span>
             </div>
 
+            <a href="{{ route('profil.index') }}" class="btn btn-secondary btn-sm" title="Profil Akun & Tanda Tangan" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="bi bi-person-circle"></i> Profil
+                @if(($user->isPimpinan() || $user->isAdminRektorat()) && !$user->tanda_tangan)
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background: #dc2626;" title="TTD Belum Disimpan"></span>
+                @endif
+            </a>
+
             <form action="{{ route('logout') }}" method="POST" id="form-logout" style="display:inline; margin:0;">
                 @csrf
                 <button type="submit" class="btn btn-secondary btn-sm"
@@ -267,9 +296,23 @@
     <main class="content-area">
         @if(session('success'))
             <div id="arsita-flash-data" data-type="success" data-message="{{ session('success') }}" style="display:none;"></div>
+            <div class="alert alert-success" style="margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="bi bi-check-circle-fill" style="font-size: 18px; color: #16a34a;"></i>
+                    <span style="font-weight: 500;">{{ session('success') }}</span>
+                </div>
+                <button type="button" class="alert-close-btn" onclick="this.parentElement.remove()" aria-label="Tutup">&times;</button>
+            </div>
         @endif
         @if(session('error'))
             <div id="arsita-flash-data" data-type="error" data-message="{{ session('error') }}" style="display:none;"></div>
+            <div class="alert alert-danger" style="margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 18px; color: #dc2626;"></i>
+                    <span style="font-weight: 500;">{{ session('error') }}</span>
+                </div>
+                <button type="button" class="alert-close-btn" onclick="this.parentElement.remove()" aria-label="Tutup">&times;</button>
+            </div>
         @endif
 
         @yield('content')
@@ -438,6 +481,32 @@
 
     // Polling setiap 15 detik agar langsung update tanpa refresh manual
     setInterval(loadNotifications, 15000);
+})();
+
+// Sidebar Toggle Functionality
+(function() {
+    var sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    if (!sidebarToggleBtn) return;
+
+    var STORAGE_KEY = 'arsita_sidebar_collapsed';
+
+    // Sinkronkan class di body dari html (yang sudah diset sebelum render)
+    if (document.documentElement.classList.contains('sidebar-collapsed')) {
+        document.body.classList.add('sidebar-collapsed');
+    }
+
+    sidebarToggleBtn.addEventListener('click', function() {
+        var isNowCollapsed = !document.body.classList.contains('sidebar-collapsed');
+        if (isNowCollapsed) {
+            document.body.classList.add('sidebar-collapsed');
+            document.documentElement.classList.add('sidebar-collapsed');
+            localStorage.setItem(STORAGE_KEY, 'true');
+        } else {
+            document.body.classList.remove('sidebar-collapsed');
+            document.documentElement.classList.remove('sidebar-collapsed');
+            localStorage.setItem(STORAGE_KEY, 'false');
+        }
+    });
 })();
 </script>
 

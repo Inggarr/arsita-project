@@ -89,5 +89,8 @@ class DatabaseSeeder extends Seeder
                 $u
             );
         }
+
+        $this->call(FakultasProdiSeeder::class);
+        $this->call(LembagaUptPusatSeeder::class);
     }
 }

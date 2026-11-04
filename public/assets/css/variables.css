@@ -49,10 +49,11 @@
     --text-inverse:    #ffffff;
 
     /* ── Sidebar ── */
-    --sidebar-bg:      #0f172a;
-    --sidebar-border:  #1e293b;
-    --sidebar-footer:  #090d16;
-    --sidebar-width:   260px;
+    --sidebar-bg:              #0f172a;
+    --sidebar-border:          #1e293b;
+    --sidebar-footer:          #090d16;
+    --sidebar-width:           260px;
+    --sidebar-collapsed-width: 72px;
 
     /* ── Layout ── */
     --topbar-height:   70px;

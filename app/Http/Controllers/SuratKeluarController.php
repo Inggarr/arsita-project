@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PermohonanAccSuratMail;
 use App\Models\AccSuratKeluar;
 use App\Models\FormatNomor;
 use App\Models\JenisSurat;
 use App\Models\KategoriSurat;
+use App\Models\Notifikasi;
+use App\Models\PengaturanSurat;
+use App\Models\SifatSurat;
 use App\Models\SuratKeluar;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\ArsitaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SuratKeluarController extends Controller
 {
@@ -61,8 +68,11 @@ class SuratKeluarController extends Controller
         $kategoriList = KategoriSurat::all();
         $jenisList = JenisSurat::all();
         $unitList = Unit::all();
+        $sifatList = SifatSurat::where('aktif', true)->get();
+        $kop = PengaturanSurat::getKop();
+        $format = PengaturanSurat::getFormat();
 
-        return view('surat_keluar.create', compact('kategoriList', 'jenisList', 'unitList', 'user'));
+        return view('surat_keluar.create', compact('kategoriList', 'jenisList', 'unitList', 'sifatList', 'user', 'kop', 'format'));
     }
 
     public function store(Request $request)
@@ -75,7 +85,7 @@ class SuratKeluarController extends Controller
             'tujuan_unit_id' => 'nullable|exists:units,id_unit',
             'kategori_id' => 'nullable|exists:kategori_surat,id_kategori',
             'jenis_surat_id' => 'required|exists:jenis_surat,id_jenis_surat',
-            'sifat' => 'required|in:biasa,penting,rahasia',
+            'sifat' => 'required|string|max:50',
             'tujuan' => 'required|string|max:255',
             'lampiran' => 'nullable|string|max:100',
             'perihal' => 'required|string|max:255',
@@ -88,7 +98,8 @@ class SuratKeluarController extends Controller
         $fileName = null;
         if ($request->hasFile('file_draft')) {
             $file = $request->file('file_draft');
-            $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+            $extension = $file->extension() ?: 'pdf';
+            $fileName = time().'_'.uniqid().'.'.$extension;
             $file->move(public_path('uploads/surat_keluar'), $fileName);
         }
 
@@ -122,6 +133,9 @@ class SuratKeluarController extends Controller
                 ]);
             }
 
+            // Kirim notifikasi email ke pimpinan tahap pertama
+            $this->kirimEmailPermohonanAcc($surat);
+
             return redirect()->route('surat-keluar.show', $surat->id_surat_keluar)->with('success', "Draft surat keluar berhasil dibuat dan langsung diajukan ke pimpinan untuk ACC ({$totalTahap} tahap ACC).");
         }
 
@@ -131,6 +145,8 @@ class SuratKeluarController extends Controller
     public function show($id)
     {
         $surat = SuratKeluar::with(['unit', 'tujuanUnit', 'kategori', 'jenisSurat', 'pembuat', 'nomorSurat', 'persetujuan.pemeriksa'])->findOrFail($id);
+        $this->authorize('view', $surat);
+
         $user = Auth::user();
 
         // Cek format nomor preview
@@ -138,12 +154,17 @@ class SuratKeluarController extends Controller
             ->where('id_jenis_surat', $surat->jenis_surat_id)
             ->first();
 
-        return view('surat_keluar.show', compact('surat', 'user', 'formatNomor'));
+        $kop = PengaturanSurat::getKop();
+        $format = PengaturanSurat::getFormat();
+
+        return view('surat_keluar.show', compact('surat', 'user', 'formatNomor', 'kop', 'format'));
     }
 
     public function edit($id)
     {
         $surat = SuratKeluar::findOrFail($id);
+        $this->authorize('update', $surat);
+
         if (! in_array($surat->status_surat, ['draft', 'revisi'])) {
             return back()->with('error', 'Surat yang sudah diajukan atau disetujui tidak dapat diedit langsung.');
         }
@@ -151,20 +172,24 @@ class SuratKeluarController extends Controller
         $kategoriList = KategoriSurat::all();
         $jenisList = JenisSurat::all();
         $unitList = Unit::all();
+        $sifatList = SifatSurat::where('aktif', true)->get();
+        $kop = PengaturanSurat::getKop();
+        $format = PengaturanSurat::getFormat();
 
-        return view('surat_keluar.edit', compact('surat', 'kategoriList', 'jenisList', 'unitList'));
+        return view('surat_keluar.edit', compact('surat', 'kategoriList', 'jenisList', 'unitList', 'sifatList', 'kop', 'format'));
     }
 
     public function update(Request $request, $id)
     {
         $surat = SuratKeluar::findOrFail($id);
+        $this->authorize('update', $surat);
 
         $request->validate([
             'id_unit' => 'nullable|exists:units,id_unit',
             'tujuan_unit_id' => 'nullable|exists:units,id_unit',
             'kategori_id' => 'nullable|exists:kategori_surat,id_kategori',
             'jenis_surat_id' => 'required|exists:jenis_surat,id_jenis_surat',
-            'sifat' => 'required|in:biasa,penting,rahasia',
+            'sifat' => 'required|string|max:50',
             'tujuan' => 'required|string|max:255',
             'lampiran' => 'nullable|string|max:100',
             'perihal' => 'required|string|max:255',
@@ -185,7 +210,8 @@ class SuratKeluarController extends Controller
 
         if ($request->hasFile('file_draft')) {
             $file = $request->file('file_draft');
-            $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+            $extension = $file->extension() ?: 'pdf';
+            $fileName = time().'_'.uniqid().'.'.$extension;
             $file->move(public_path('uploads/surat_keluar'), $fileName);
             $data['file_draft'] = $fileName;
         }
@@ -203,6 +229,8 @@ class SuratKeluarController extends Controller
     public function destroy($id)
     {
         $surat = SuratKeluar::findOrFail($id);
+        $this->authorize('delete', $surat);
+
         $surat->delete();
 
         return redirect()->route('surat-keluar.index')->with('success', 'Surat keluar berhasil dihapus.');
@@ -211,6 +239,7 @@ class SuratKeluarController extends Controller
     public function ajukan($id)
     {
         $surat = SuratKeluar::with('unit')->findOrFail($id);
+        $this->authorize('ajukan', $surat);
 
         // Jika surat berstatus 'revisi', pastikan staff sudah melakukan pengeditan terlebih dahulu
         if ($surat->status_surat === 'revisi' && ! $surat->sudah_direvisi) {
@@ -236,13 +265,68 @@ class SuratKeluarController extends Controller
             'sudah_direvisi' => false, // Reset flag revisi untuk siklus berikutnya jika ada penolakan lagi
         ]);
 
+        // Tandai notifikasi revisi terkait surat keluar ini sebagai selesai/read
+        Notifikasi::where('url', 'like', '%surat-keluar/'.$surat->id_surat_keluar.'%')
+            ->where('tipe', 'revisi')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        // Kirim notifikasi email ke pimpinan tahap pertama
+        $this->kirimEmailPermohonanAcc($surat);
+
         return back()->with('success', "Surat keluar berhasil diajukan untuk proses persetujuan ({$totalTahap} tahap ACC).");
     }
 
     public function cetak($id)
     {
         $surat = SuratKeluar::with(['unit', 'kategori', 'jenisSurat', 'nomorSurat', 'pembuat'])->findOrFail($id);
+        $this->authorize('view', $surat);
 
-        return view('surat_keluar.cetak', compact('surat'));
+        $kop = PengaturanSurat::getKop();
+        $format = PengaturanSurat::getFormat();
+
+        return view('surat_keluar.cetak', compact('surat', 'kop', 'format'));
+    }
+
+    /**
+     * Kirim notifikasi email permohonan ACC ke pimpinan pada tahap pertama yang menunggu.
+     */
+    private function kirimEmailPermohonanAcc(SuratKeluar $surat): void
+    {
+        try {
+            $surat->load('unit');
+
+            // Ambil tahap pertama yang masih menunggu
+            $firstAcc = $surat->persetujuan()
+                ->where('status', 'menunggu')
+                ->orderBy('tahap_ke', 'asc')
+                ->first();
+
+            if (! $firstAcc) {
+                return;
+            }
+
+            // Tentukan pimpinan yang harus menerima email
+            $pimpinan = null;
+
+            if ($firstAcc->disetujui_oleh) {
+                $pimpinan = User::find($firstAcc->disetujui_oleh);
+            }
+
+            if (! $pimpinan && $surat->id_unit) {
+                // Cari pimpinan di unit yang sama (role pimpinan = id_role 4)
+                $pimpinan = User::where('id_unit', $surat->id_unit)
+                    ->where('id_role', 4)
+                    ->first();
+            }
+
+            if (! $pimpinan || ! $pimpinan->email) {
+                return;
+            }
+
+            Mail::to($pimpinan->email)->send(new PermohonanAccSuratMail($surat, $pimpinan, $firstAcc));
+        } catch (\Throwable $e) {
+            Log::error('Gagal mengirim email permohonan ACC: '.$e->getMessage());
+        }
     }
 }

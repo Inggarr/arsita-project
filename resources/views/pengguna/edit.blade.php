@@ -27,6 +27,12 @@
         </div>
 
         <div class="form-group">
+            <label for="kode_jabatan">Kode Jabatan Penandatangan (Opsional)</label>
+            <input type="text" name="kode_jabatan" id="kode_jabatan" value="{{ old('kode_jabatan', $pengguna->kode_jabatan) }}" placeholder="Contoh: R, R.III, F.I, J.I.16">
+            <small class="text-muted" style="font-size: 11px;">Kode pejabat penandatangan surat berdasarkan pedoman dinas (kode.md).</small>
+        </div>
+
+        <div class="form-group">
             <label for="username">Username Login *</label>
             <input type="text" name="username" id="username" value="{{ old('username', $pengguna->username) }}" required>
         </div>

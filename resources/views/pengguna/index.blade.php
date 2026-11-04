@@ -19,6 +19,7 @@
                 <thead>
                     <tr>
                         <th>Nama &amp; Username</th>
+                        <th>Kode Jabatan</th>
                         <th>Role Akses</th>
                         <th>Unit Kampus</th>
                         <th>Status</th>
@@ -31,6 +32,13 @@
                             <td>
                                 <b>{{ $u->nama }}</b><br>
                                 <small class="text-muted">@{{ $u->username }}</small>
+                            </td>
+                            <td>
+                                @if($u->kode_jabatan)
+                                    <code style="background: #eff6ff; color: #1e40af; padding: 2px 7px; border-radius: 4px; font-weight: 700; border: 1px solid #bfdbfe;">{{ $u->kode_jabatan }}</code>
+                                @else
+                                    <span class="text-muted" style="font-size: 12px;">—</span>
+                                @endif
                             </td>
                             <td>
                                 <span style="font-size: 11.5px; font-weight: 600; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">
@@ -89,6 +97,12 @@
             <div class="form-group">
                 <label for="nama">Nama Lengkap &amp; Gelar *</label>
                 <input type="text" name="nama" id="nama" value="{{ old('nama') }}" placeholder="Contoh: Dr. H. Ahmad, M.Ag." required>
+            </div>
+
+            <div class="form-group">
+                <label for="kode_jabatan">Kode Jabatan Penandatangan (Opsional)</label>
+                <input type="text" name="kode_jabatan" id="kode_jabatan" value="{{ old('kode_jabatan') }}" placeholder="Contoh: R, R.III, F.I, J.I.16">
+                <small class="text-muted" style="font-size: 11px;">Digunakan untuk kode penandatangan surat (kode.md) bila user ini adalah pimpinan/pejabat penandatangan.</small>
             </div>
 
             <div class="form-group">

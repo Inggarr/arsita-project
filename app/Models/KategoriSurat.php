@@ -14,8 +14,14 @@ class KategoriSurat extends Model
 
     protected $fillable = [
         'nama_kategori',
+        'kode_kategori',
         'deskripsi',
     ];
+
+    public function jenisSurat()
+    {
+        return $this->hasMany(JenisSurat::class, 'kategori_id', 'id_kategori');
+    }
 
     public function suratMasuk()
     {

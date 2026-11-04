@@ -40,9 +40,16 @@
         @endforeach
     </div>
 
-    <a href="{{ route('surat-masuk.show', $sm?->id_surat_masuk) }}" style="font-size: 13px; color: #2563eb; text-decoration: none; font-weight: 600;">
-        <i class="bi bi-file-earmark-text-fill"></i> Lihat Detail Surat Asli →
-    </a>
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <a href="{{ route('surat-masuk.show', $sm?->id_surat_masuk) }}" style="font-size: 13px; color: #2563eb; text-decoration: none; font-weight: 600;">
+            <i class="bi bi-file-earmark-text-fill"></i> Lihat Detail Surat Asli →
+        </a>
+        @if(Auth::user()->isPimpinan() && $sm)
+            <a href="{{ route('disposisi.create', $sm->id_surat_masuk) }}" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #7c3aed; color: #fff; border-radius: 6px; font-size: 12.5px; font-weight: 600; text-decoration: none; margin-left: auto;">
+                <i class="bi bi-arrow-left-right"></i> Teruskan Disposisi ke Prodi / Unit Lain →
+            </a>
+        @endif
+    </div>
 </div>
 
 <!-- Riwayat Tindak Lanjut -->

@@ -6,13 +6,25 @@ use App\Models\FormatNomor;
 use App\Models\JenisSurat;
 use App\Models\KategoriSurat;
 use App\Models\Unit;
+use App\Services\ArsitaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class MasterDataController extends Controller
 {
+    private function checkStaffTu(): void
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->isStaffTu()) {
+            abort(403, 'Akses ditolak. Fitur penomoran surat hanya dapat diakses oleh Staff TU.');
+        }
+    }
+
     // 1. Format Nomor
     public function formatNomorIndex()
     {
+        $this->checkStaffTu();
+
         $formatList = FormatNomor::with(['unit', 'jenisSurat', 'kategori'])->get();
         $units = Unit::all();
         $unitList = $units;
@@ -25,28 +37,59 @@ class MasterDataController extends Controller
 
     public function formatNomorStore(Request $request)
     {
+        $this->checkStaffTu();
+
         $request->validate([
             'id_unit' => 'required|exists:units,id_unit',
             'id_jenis_surat' => 'required|exists:jenis_surat,id_jenis_surat',
             'kategori_id' => 'nullable|exists:kategori_surat,id_kategori',
-            'format_nomor' => 'required|string',
-            'contoh' => 'nullable|string',
+            'format_nomor' => 'required|string|max:100',
+            'contoh' => 'nullable|string|max:100',
         ]);
 
-        FormatNomor::updateOrCreate(
-            [
-                'id_unit' => $request->id_unit,
-                'id_jenis_surat' => $request->id_jenis_surat,
-                'kategori_id' => $request->kategori_id ?: null,
-            ],
-            [
-                'format_nomor' => $request->format_nomor,
-                'contoh' => $request->contoh,
-                'aktif' => 1,
-            ]
-        );
+        FormatNomor::create([
+            'id_unit' => $request->id_unit,
+            'id_jenis_surat' => $request->id_jenis_surat,
+            'kategori_id' => $request->kategori_id ?: null,
+            'format_nomor' => $request->format_nomor,
+            'contoh' => $request->contoh,
+            'nomor_terakhir' => 0,
+            'aktif' => 1,
+        ]);
 
-        return back()->with('success', 'Format penomoran surat berhasil disimpan.');
+        return back()->with('success', 'Format penomoran surat berhasil ditambahkan.');
+    }
+
+    public function formatNomorUpdate(Request $request, $id)
+    {
+        $this->checkStaffTu();
+
+        $format = FormatNomor::findOrFail($id);
+
+        $request->validate([
+            'id_unit' => 'required|exists:units,id_unit',
+            'id_jenis_surat' => 'required|exists:jenis_surat,id_jenis_surat',
+            'kategori_id' => 'nullable|exists:kategori_surat,id_kategori',
+            'format_nomor' => 'required|string|max:100',
+            'contoh' => 'nullable|string|max:100',
+            'aktif' => 'nullable|in:0,1',
+        ]);
+
+        $format->update([
+            'id_unit' => $request->id_unit,
+            'id_jenis_surat' => $request->id_jenis_surat,
+            'kategori_id' => $request->kategori_id ?: null,
+            'format_nomor' => $request->format_nomor,
+            'contoh' => $request->contoh,
+            'aktif' => $request->has('aktif') ? (int) $request->aktif : 1,
+        ]);
+
+        $updatedCount = ArsitaService::updateNomorSuratByFormat($format);
+        $pesan = $updatedCount > 0
+            ? "Format penomoran berhasil diperbarui dan {$updatedCount} nomor surat keluar terkait telah disinkronkan."
+            : 'Nomor surat berhasil diperbarui.';
+
+        return back()->with('success', $pesan);
     }
 
     // 2. Unit
@@ -67,7 +110,7 @@ class MasterDataController extends Controller
         $request->validate([
             'nama_unit' => 'required|string|max:100',
             'kode_unit' => 'required|string|max:20',
-            'level' => 'required|in:rektorat,fakultas,prodi',
+            'level' => 'required|in:rektorat,fakultas,prodi,lembaga,upt,pusat',
             'id_parent' => 'nullable|exists:units,id_unit',
         ]);
 
@@ -129,6 +172,8 @@ class MasterDataController extends Controller
 
     public function formatNomorDestroy($id)
     {
+        $this->checkStaffTu();
+
         FormatNomor::findOrFail($id)->delete();
 
         return back()->with('success', 'Format nomor berhasil dihapus.');

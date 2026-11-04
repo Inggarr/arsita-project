@@ -59,7 +59,7 @@
         <div class="card-title">Aksi Cepat</div>
     </div>
     <div class="quick-actions">
-        @if(in_array($role, ['admin_rektorat', 'staff_tu']))
+        @if(in_array($role, ['admin_rektorat', 'staff_tu', 'admin_unit']))
             <a href="{{ route('surat-masuk.create') }}" class="btn btn-primary">
                 <i class="bi bi-file-earmark-plus"></i> Catat Surat Masuk
             </a>
@@ -162,14 +162,14 @@
                 </thead>
                 <tbody>
                     @forelse($recentSuratMasuk as $sm)
-                        <tr>
+                        <tr onclick="window.location='{{ route('surat-masuk.show', $sm->id_surat_masuk) }}'" style="cursor: pointer; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" title="Klik untuk membuka detail surat masuk">
                             <td>{{ $sm->tanggal_terima ? date('d/m/Y', strtotime($sm->tanggal_terima)) : '-' }}</td>
                             <td>
                                 <b>{{ $sm->no_surat_asal ?: '-' }}</b><br>
                                 <small class="text-muted">{{ $sm->asal_surat ?: '-' }}</small>
                             </td>
                             <td>
-                                <a href="{{ route('surat-masuk.show', $sm->id_surat_masuk) }}" class="text-brand font-500">
+                                <a href="{{ route('surat-masuk.show', $sm->id_surat_masuk) }}" class="text-brand font-500" style="text-decoration: none;">
                                     {{ $sm->perihal }}
                                 </a>
                             </td>
@@ -203,15 +203,21 @@
                 </thead>
                 <tbody>
                     @forelse($activeDisposisi as $dt)
-                        <tr>
+                        @php
+                            $suratMasukId = $dt->disposisi && $dt->disposisi->id_surat_masuk ? $dt->disposisi->id_surat_masuk : null;
+                            $targetUrl = $suratMasukId ? route('surat-masuk.show', $suratMasukId) : route('disposisi.show', $dt->id_disposisi_tujuan);
+                        @endphp
+                        <tr onclick="window.location='{{ $targetUrl }}'" style="cursor: pointer; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" title="Klik untuk membuka surat langsung">
                             <td>
-                                <b>{{ $dt->disposisi && $dt->disposisi->suratMasuk ? $dt->disposisi->suratMasuk->perihal : '-' }}</b><br>
+                                <a href="{{ $targetUrl }}" class="text-brand" style="text-decoration: none;">
+                                    <b>{{ $dt->disposisi && $dt->disposisi->suratMasuk ? $dt->disposisi->suratMasuk->perihal : '-' }}</b>
+                                </a><br>
                                 <small class="text-muted">Dari: {{ $dt->disposisi && $dt->disposisi->pengirim ? $dt->disposisi->pengirim->nama : '-' }}</small>
                             </td>
                             <td>{{ Str::limit($dt->disposisi ? $dt->disposisi->instruksi : '-', 45) }}</td>
                             <td>{!! \App\Services\ArsitaService::badgeStatus($dt->disposisi ? $dt->disposisi->sifat : '-') !!}</td>
                             <td>
-                                <a href="{{ route('disposisi.show', $dt->id_disposisi_tujuan) }}">
+                                <a href="{{ route('disposisi.show', $dt->id_disposisi_tujuan) }}" onclick="event.stopPropagation();" title="Buka Lembar Disposisi">
                                     {!! \App\Services\ArsitaService::badgeStatus($dt->status) !!}
                                 </a>
                             </td>
