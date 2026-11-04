@@ -91,18 +91,35 @@
 <!-- Sidebar Identik Asli Native -->
 <aside class="sidebar">
     <div class="sidebar-brand">
-        <div style="display: flex; align-items: center; gap: var(--space-3); overflow: hidden; min-width: 0; flex: 1;">
-            <div class="sidebar-logo" style="background: transparent; box-shadow: none; padding: 2px;">
-                <img src="{{ asset('assets/img/logo.png') }}" alt="Logo ARSITA" style="width: 100%; height: 100%; object-fit: contain;">
+        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0; flex: 1;">
+            <div class="sidebar-logo" style="background: transparent; padding: 0;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Logo ARSITA" style="width: 32px; height: 32px; object-fit: contain;">
             </div>
             <div class="sidebar-brand-text">
-                <div class="sidebar-title">ARSITA</div>
-                <div class="sidebar-sub">Disposisi &amp; Persuratan</div>
+                <div class="sidebar-title">
+                    ARSITA <span class="sidebar-badge">v2.4</span>
+                </div>
+                <div class="sidebar-sub">Digital Office &amp; Disposisi</div>
             </div>
         </div>
         <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Buka / Tutup Sidebar" aria-label="Toggle Sidebar">
             <i class="bi bi-list"></i>
         </button>
+    </div>
+
+    <!-- Info Box Identitas Unit Pengguna (Persis Card Hijau di Gambar) -->
+    <div class="sidebar-unit-card">
+        <div class="sidebar-unit-icon">
+            <i class="bi bi-bank2"></i>
+        </div>
+        <div style="min-width: 0; flex: 1;">
+            <div class="sidebar-unit-name" title="{{ $user_name }} ({{ ucwords(str_replace('_', ' ', $role)) }})">
+                {{ ucwords(str_replace('_', ' ', $role)) }} {{ $kode_unit !== '-' ? $kode_unit : '' }}
+            </div>
+            <div class="sidebar-unit-desc" title="{{ $user_unit }}">
+                {{ $user_unit }}
+            </div>
+        </div>
     </div>
 
     <div class="sidebar-menu">
@@ -232,15 +249,31 @@
 <div class="main-wrapper">
     <header class="topbar">
         <div class="topbar-left">
-            <div class="page-title">@yield('title', 'Dashboard')</div>
+            <div class="topbar-breadcrumb">
+                <span>UINSSC</span>
+                <span>/</span>
+                <span>{{ $user_unit }}</span>
+                <span>/</span>
+                <span class="current">@yield('title', 'Dashboard')</span>
+            </div>
+
+            <div class="topbar-search">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Cari naskah / agenda..." onkeydown="if(event.key === 'Enter') { window.location = '{{ route('arsip.index') }}?q=' + encodeURIComponent(this.value); }">
+            </div>
+
+            <div class="server-status-pill">
+                <span class="dot"></span>
+                <span>Server Terhubung</span>
+            </div>
         </div>
 
-        <div class="topbar-right" style="display: flex; align-items: center; gap: 14px;">
+        <div class="topbar-right">
             <!-- Notifikasi Lonceng Dropdown -->
             <div class="notif-bell-wrapper" id="notif-wrapper" style="position: relative; display: inline-flex; align-items: center;">
-                <button type="button" class="notif-bell-btn" id="notif-toggle-btn" title="Notifikasi Sistem" aria-label="Notifikasi" style="position: relative; width: 40px; height: 40px; border-radius: 10px; background: #f8fafc; border: 1.5px solid #e2e8f0; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; cursor: pointer; transition: all 0.2s ease; outline: none; padding: 0;">
+                <button type="button" class="notif-bell-btn" id="notif-toggle-btn" title="Notifikasi Sistem" aria-label="Notifikasi" style="position: relative; width: 38px; height: 38px; border-radius: 50%; background: #f3f4f6; border: 1px solid #e5e7eb; color: #4b5563; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; transition: all 0.2s ease; outline: none; padding: 0;">
                     <i class="bi bi-bell-fill"></i>
-                    <span class="notif-badge-count" id="notif-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #dc2626; color: #ffffff; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9999px; align-items: center; justify-content: center; border: 2px solid #ffffff; line-height: 1; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4); z-index: 2;">0</span>
+                    <span class="notif-badge-count" id="notif-badge" style="display: none; position: absolute; top: -3px; right: -3px; background: #dc2626; color: #ffffff; font-size: 10px; font-weight: 700; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9999px; align-items: center; justify-content: center; border: 2px solid #ffffff; line-height: 1; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4); z-index: 2;">0</span>
                 </button>
 
                 <!-- Panel Dropdown Notifikasi -->
@@ -248,7 +281,7 @@
                     <!-- Header -->
                     <div class="notif-header" style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-bottom: 1px solid #e2e8f0;">
                         <div class="notif-header-title" style="font-size: 13.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                            <i class="bi bi-bell" style="font-size: 16px; color: #1e40af;"></i> Notifikasi
+                            <i class="bi bi-bell" style="font-size: 16px; color: #047857;"></i> Notifikasi
                         </div>
                         <span style="font-size: 11px; color: #64748b; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 600;">
                             Hilang saat ditindaklanjuti
@@ -268,26 +301,26 @@
                 </div>
             </div>
 
-            <div class="unit-tag">
-                <i class="bi bi-building"></i>
-                <span>{{ $user_unit }} ({{ $kode_unit }})</span>
-            </div>
-
-            <a href="{{ route('profil.index') }}" class="btn btn-secondary btn-sm" title="Profil Akun & Tanda Tangan" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                <i class="bi bi-person-circle"></i> Profil
-                @if(($user->isPimpinan() || $user->isAdminRektorat()) && !$user->tanda_tangan)
-                    <span style="width: 7px; height: 7px; border-radius: 50%; background: #dc2626;" title="TTD Belum Disimpan"></span>
-                @endif
+            <!-- Profile User Pill persis gambar referensi -->
+            <a href="{{ route('profil.index') }}" class="user-profile-btn" title="Kelola Profil & Tanda Tangan">
+                <div class="avatar">
+                    {{ strtoupper(substr($user_name, 0, 2)) }}
+                </div>
+                <div class="info">
+                    <div class="name">{{ Str::limit($user_name, 18) }}</div>
+                    <div class="role">{{ ucwords(str_replace('_', ' ', $role)) }}</div>
+                </div>
             </a>
 
+            <!-- Tombol Logout -->
             <form action="{{ route('logout') }}" method="POST" id="form-logout" style="display:inline; margin:0;">
                 @csrf
                 <button type="submit" class="btn btn-secondary btn-sm"
                    data-confirm="Anda akan keluar dari sistem ARSITA. Pastikan semua pekerjaan sudah tersimpan."
                    data-confirm-title="Keluar dari Sistem?"
                    data-confirm-type="logout"
-                   data-confirm-btn="Ya, Keluar" style="cursor: pointer; border: none;">
-                    <i class="bi bi-box-arrow-right"></i> Keluar
+                   data-confirm-btn="Ya, Keluar" style="cursor: pointer; border-radius: var(--radius-full); padding: 7px 12px;" title="Keluar">
+                    <i class="bi bi-box-arrow-right"></i>
                 </button>
             </form>
         </div>

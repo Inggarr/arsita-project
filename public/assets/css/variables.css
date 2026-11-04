@@ -12,48 +12,48 @@
 }
 
 :root {
-    /* ── Brand Colors ── */
-    --primary:         #1e40af;
-    --primary-hover:   #1d4ed8;
-    --primary-light:   #3b82f6;
-    --primary-subtle:  #eff6ff;
-    --primary-border:  #bfdbfe;
+    /* ── Brand Colors (Tema Modern Emerald UINSSC E-Office) ── */
+    --primary:         #047857;
+    --primary-hover:   #065f46;
+    --primary-light:   #10b981;
+    --primary-subtle:  #ecfdf5;
+    --primary-border:  #a7f3d0;
 
     /* ── Semantic Colors ── */
-    --success:         #16a34a;
-    --success-bg:      #dcfce7;
-    --success-border:  #bbf7d0;
+    --success:         #10b981;
+    --success-bg:      #ecfdf5;
+    --success-border:  #a7f3d0;
     --warning:         #d97706;
-    --warning-bg:      #fef3c7;
-    --warning-border:  #fde68a;
-    --danger:          #dc2626;
-    --danger-bg:       #fee2e2;
-    --danger-border:   #fecaca;
-    --info:            #0284c7;
-    --info-bg:         #e0f2fe;
-    --info-border:     #bae6fd;
+    --warning-bg:      #fffbeb;
+    --warning-border:  #fef3c7;
+    --danger:          #ef4444;
+    --danger-bg:       #fef2f2;
+    --danger-border:   #fee2e2;
+    --info:            #0d9488;
+    --info-bg:         #f0fdfa;
+    --info-border:     #ccfbf1;
 
-    /* ── Neutral Palette ── */
-    --bg-app:          #f1f5f9;
+    /* ── Neutral Palette (Soft Clean Background) ── */
+    --bg-app:          #f4f6f8;
     --bg-card:         #ffffff;
     --bg-input:        #ffffff;
     --bg-table-head:   #f8fafc;
     --bg-hover:        #f8fafc;
-    --border-color:    #e2e8f0;
-    --border-focus:    #3b82f6;
+    --border-color:    #e5e7eb;
+    --border-focus:    #10b981;
 
     /* ── Text Colors ── */
-    --text-primary:    #0f172a;
-    --text-secondary:  #475569;
-    --text-muted:      #94a3b8;
+    --text-primary:    #111827;
+    --text-secondary:  #4b5563;
+    --text-muted:      #9ca3af;
     --text-inverse:    #ffffff;
 
-    /* ── Sidebar ── */
-    --sidebar-bg:              #0f172a;
-    --sidebar-border:          #1e293b;
-    --sidebar-footer:          #090d16;
-    --sidebar-width:           260px;
-    --sidebar-collapsed-width: 72px;
+    /* ── Sidebar (Clean White Style Sesuai Referensi) ── */
+    --sidebar-bg:              #ffffff;
+    --sidebar-border:          #e5e7eb;
+    --sidebar-footer:          #f9fafb;
+    --sidebar-width:           264px;
+    --sidebar-collapsed-width: 76px;
 
     /* ── Layout ── */
     --topbar-height:   70px;
