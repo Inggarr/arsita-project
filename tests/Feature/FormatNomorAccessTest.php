@@ -34,10 +34,6 @@ class FormatNomorAccessTest extends TestCase
         $pimpinan = $this->makeUserWithRole('pimpinan');
         $response = $this->actingAs($pimpinan)->get(route('master.format-nomor'));
         $response->assertStatus(403);
-
-        $adminRektorat = $this->makeUserWithRole('admin_rektorat');
-        $response2 = $this->actingAs($adminRektorat)->get(route('master.format-nomor'));
-        $response2->assertStatus(403);
     }
 
     public function test_staff_tu_can_access_format_nomor_page(): void

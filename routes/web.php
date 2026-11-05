@@ -77,21 +77,26 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/tindak-lanjut', [DisposisiController::class, 'tindakLanjut'])->name('tindak-lanjut');
     });
 
-    // Master Data (Hanya Admin Rektorat)
-    Route::prefix('master')->name('master.')->middleware('role:admin_rektorat')->group(function () {
-        Route::get('/format-nomor', [MasterDataController::class, 'formatNomorIndex'])->name('format-nomor');
-        Route::post('/format-nomor', [MasterDataController::class, 'formatNomorStore'])->name('format-nomor.store');
-        Route::put('/format-nomor/{id}', [MasterDataController::class, 'formatNomorUpdate'])->name('format-nomor.update');
-        Route::delete('/format-nomor/{id}', [MasterDataController::class, 'formatNomorDestroy'])->name('format-nomor.destroy');
-        Route::get('/unit', [MasterDataController::class, 'unitIndex'])->name('unit');
-        Route::post('/unit', [MasterDataController::class, 'unitStore'])->name('unit.store');
-        Route::delete('/unit/{id}', [MasterDataController::class, 'unitDestroy'])->name('unit.destroy');
-        Route::get('/kategori', [MasterDataController::class, 'kategoriIndex'])->name('kategori');
-        Route::post('/kategori', [MasterDataController::class, 'kategoriStore'])->name('kategori.store');
-        Route::delete('/kategori/{id}', [MasterDataController::class, 'kategoriDestroy'])->name('kategori.destroy');
-        Route::get('/jenis', [MasterDataController::class, 'jenisIndex'])->name('jenis');
-        Route::post('/jenis', [MasterDataController::class, 'jenisStore'])->name('jenis.store');
-        Route::delete('/jenis/{id}', [MasterDataController::class, 'jenisDestroy'])->name('jenis.destroy');
+    // Master Data Format Nomor (Staff TU & Admin Rektorat)
+    Route::prefix('master')->name('master.')->group(function () {
+        Route::middleware('role:staff_tu,admin_rektorat')->group(function () {
+            Route::get('/format-nomor', [MasterDataController::class, 'formatNomorIndex'])->name('format-nomor');
+            Route::post('/format-nomor', [MasterDataController::class, 'formatNomorStore'])->name('format-nomor.store');
+            Route::put('/format-nomor/{id}', [MasterDataController::class, 'formatNomorUpdate'])->name('format-nomor.update');
+            Route::delete('/format-nomor/{id}', [MasterDataController::class, 'formatNomorDestroy'])->name('format-nomor.destroy');
+        });
+
+        Route::middleware('role:admin_rektorat')->group(function () {
+            Route::get('/unit', [MasterDataController::class, 'unitIndex'])->name('unit');
+            Route::post('/unit', [MasterDataController::class, 'unitStore'])->name('unit.store');
+            Route::delete('/unit/{id}', [MasterDataController::class, 'unitDestroy'])->name('unit.destroy');
+            Route::get('/kategori', [MasterDataController::class, 'kategoriIndex'])->name('kategori');
+            Route::post('/kategori', [MasterDataController::class, 'kategoriStore'])->name('kategori.store');
+            Route::delete('/kategori/{id}', [MasterDataController::class, 'kategoriDestroy'])->name('kategori.destroy');
+            Route::get('/jenis', [MasterDataController::class, 'jenisIndex'])->name('jenis');
+            Route::post('/jenis', [MasterDataController::class, 'jenisStore'])->name('jenis.store');
+            Route::delete('/jenis/{id}', [MasterDataController::class, 'jenisDestroy'])->name('jenis.destroy');
+        });
     });
 
     // Manajemen Pengguna (Hanya Admin Rektorat)

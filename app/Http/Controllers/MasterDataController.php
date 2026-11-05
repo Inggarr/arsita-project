@@ -12,18 +12,18 @@ use Illuminate\Support\Facades\Auth;
 
 class MasterDataController extends Controller
 {
-    private function checkStaffTu(): void
+    private function checkAccess(): void
     {
         $user = Auth::user();
-        if (! $user || ! $user->isStaffTu()) {
-            abort(403, 'Akses ditolak. Fitur penomoran surat hanya dapat diakses oleh Staff TU.');
+        if (! $user || (! $user->isStaffTu() && ! $user->isAdminRektorat())) {
+            abort(403, 'Akses ditolak. Fitur penomoran surat hanya dapat diakses oleh Staff TU atau Admin Rektorat.');
         }
     }
 
     // 1. Format Nomor
     public function formatNomorIndex()
     {
-        $this->checkStaffTu();
+        $this->checkAccess();
 
         $formatList = FormatNomor::with(['unit', 'jenisSurat', 'kategori'])->get();
         $units = Unit::all();
@@ -37,7 +37,7 @@ class MasterDataController extends Controller
 
     public function formatNomorStore(Request $request)
     {
-        $this->checkStaffTu();
+        $this->checkAccess();
 
         $request->validate([
             'id_unit' => 'required|exists:units,id_unit',
@@ -62,7 +62,7 @@ class MasterDataController extends Controller
 
     public function formatNomorUpdate(Request $request, $id)
     {
-        $this->checkStaffTu();
+        $this->checkAccess();
 
         $format = FormatNomor::findOrFail($id);
 
@@ -172,7 +172,7 @@ class MasterDataController extends Controller
 
     public function formatNomorDestroy($id)
     {
-        $this->checkStaffTu();
+        $this->checkAccess();
 
         FormatNomor::findOrFail($id)->delete();
 
