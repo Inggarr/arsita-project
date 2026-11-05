@@ -15,11 +15,11 @@ class ArsipLaporanController extends Controller
     public function arsip(Request $request)
     {
         $user = Auth::user();
-        $q = trim($request->get('q', ''));
-        $tipe = $request->get('tipe', 'semua'); // 'semua', 'masuk', 'keluar'
-        $kategori_id = $request->get('kategori', '');
-        $tgl_mulai = $request->get('tgl_mulai', '');
-        $tgl_selesai = $request->get('tgl_selesai', '');
+        $q = trim((string) $request->get('q', ''));
+        $tipe = $request->get('tipe', 'semua') ?: 'semua'; // 'semua', 'masuk', 'keluar'
+        $kategori_id = $request->get('kategori');
+        $tgl_mulai = $request->get('tgl_mulai');
+        $tgl_selesai = $request->get('tgl_selesai');
 
         $results = [];
 
@@ -31,7 +31,7 @@ class ArsipLaporanController extends Controller
                 $querySM->where('id_unit', $user->id_unit);
             }
 
-            if ($q !== '') {
+            if (! empty($q)) {
                 $querySM->where(function ($w) use ($q) {
                     $w->where('no_surat_asal', 'like', "%{$q}%")
                         ->orWhere('perihal', 'like', "%{$q}%")
@@ -39,15 +39,15 @@ class ArsipLaporanController extends Controller
                 });
             }
 
-            if ($kategori_id !== '') {
+            if (! empty($kategori_id)) {
                 $querySM->where('kategori_id', $kategori_id);
             }
 
-            if ($tgl_mulai !== '') {
+            if (! empty($tgl_mulai)) {
                 $querySM->where('tanggal_terima', '>=', $tgl_mulai);
             }
 
-            if ($tgl_selesai !== '') {
+            if (! empty($tgl_selesai)) {
                 $querySM->where('tanggal_terima', '<=', $tgl_selesai);
             }
 
@@ -76,7 +76,7 @@ class ArsipLaporanController extends Controller
                 $querySK->where('id_unit', $user->id_unit);
             }
 
-            if ($q !== '') {
+            if (! empty($q)) {
                 $querySK->where(function ($w) use ($q) {
                     $w->where('perihal', 'like', "%{$q}%")
                         ->orWhere('tujuan', 'like', "%{$q}%")
@@ -86,15 +86,15 @@ class ArsipLaporanController extends Controller
                 });
             }
 
-            if ($kategori_id !== '') {
+            if (! empty($kategori_id)) {
                 $querySK->where('kategori_id', $kategori_id);
             }
 
-            if ($tgl_mulai !== '') {
+            if (! empty($tgl_mulai)) {
                 $querySK->where('tanggal_draft', '>=', $tgl_mulai);
             }
 
-            if ($tgl_selesai !== '') {
+            if (! empty($tgl_selesai)) {
                 $querySK->where('tanggal_draft', '<=', $tgl_selesai);
             }
 
